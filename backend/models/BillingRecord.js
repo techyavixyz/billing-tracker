@@ -8,7 +8,8 @@ const BillingRecordSchema = new mongoose.Schema({
   usageUnit: String,
   price: Number,
   discountedPrice: Number,
-  date: { type: Date, required: true }
+  date: { type: Date, required: true },
+  entryType: { type: String, enum: ['daily', 'monthly'], default: 'daily' }
 });
 
 module.exports = mongoose.model("BillingRecord", BillingRecordSchema);

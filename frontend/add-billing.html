@@ -60,7 +60,7 @@
       <label id="dateLabel">Date</label>
       <input id="date" type="date" />
 
-      <label id="monthLabel" style="display:none">Month</label>
+      <label id="monthLabel" style="display:none">Month (YYYY-MM format, e.g., 2024-08)</label>
       <input id="month" type="month" style="display:none" />
 
       <button onclick="submitData()" style="width: 100%; margin-top: 16px;">
@@ -102,6 +102,16 @@ async function submitData() {
 
   if (!serviceVal || !resourceTypeVal || !skuVal || !usageVal || !priceVal) {
     alert("Please fill in all required fields");
+    return;
+  }
+
+  if (typeEl.value === "daily" && !dateEl.value) {
+    alert("Please select a date for daily entry");
+    return;
+  }
+
+  if (typeEl.value === "monthly" && !monthEl.value) {
+    alert("Please select a month for monthly entry (format: YYYY-MM)");
     return;
   }
 

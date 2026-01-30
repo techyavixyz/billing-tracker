@@ -40,6 +40,10 @@ function clearFilters() {
   filterResource().value = "";
   filterDate().value = "";
   filterMonth().value = "";
+  document.getElementById("filterMode").value = "monthly";
+
+  filterDate().style.display = "none";
+  filterMonth().style.display = "block";
 
   loadOverview();
 }
@@ -288,9 +292,18 @@ function renderTable(rows) {
         ((r.price - r.discountedPrice) / r.price) * 100;
     }
 
+    const dateObj = new Date(r.date);
+    let dateDisplay;
+
+    if (r.entryType === "monthly") {
+      dateDisplay = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    } else {
+      dateDisplay = dateObj.toLocaleDateString();
+    }
+
     tbody.innerHTML += `
       <tr>
-        <td>${new Date(r.date).toLocaleDateString()}</td>
+        <td>${dateDisplay}</td>
         <td>${r.resourceType}</td>
         <td>${r.sku}</td>
         <td>${r.usage.toFixed(2)}</td>

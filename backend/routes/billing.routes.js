@@ -38,7 +38,8 @@ router.post("/add", async (req, res) => {
     usageUnit: "unit",
     price,
     discountedPrice,
-    date: finalDate
+    date: finalDate,
+    entryType: type
   });
 
   res.json(record);
