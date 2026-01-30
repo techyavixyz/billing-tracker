@@ -2,19 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Instance Usage Calculator</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
 <nav>
+  <a href="index.html">Dashboard</a>
   <a href="service.html?service=gcp">GCP</a>
   <a href="service.html?service=aws">AWS</a>
   <a href="service.html?service=hetzner">Hetzner</a>
   <a href="service.html?service=jira">Jira</a>
   <a href="service.html?service=bitbucket">Bitbucket</a>
   <a href="add-billing.html">Add Billing</a>
-  <a href="instance.html">Instance</a>
+  <a href="instance.html" class="active">Instance</a>
 </nav>
 
 <div class="app-container">
@@ -24,24 +26,35 @@
   </div>
 
   <div class="main">
+
+    <h1>Instance Usage Calculator</h1>
+    <p style="color: #94a3b8; font-size: 16px; margin-bottom: 32px;">
+      Calculate average CPU and RAM usage for your cloud instances
+    </p>
+
     <div class="card">
-      <h2>Instance Usage Calculator</h2>
+      <h2 style="margin-top: 0; margin-bottom: 24px;">Enter Usage Metrics</h2>
 
       <label>Total CPU Usage (vCPU-hours)</label>
-      <input id="cpuUsage" type="number" />
+      <input id="cpuUsage" type="number" step="0.01" placeholder="Enter total vCPU hours" />
 
       <label>Total RAM Usage (GiB-hours)</label>
-      <input id="ramUsage" type="number" />
+      <input id="ramUsage" type="number" step="0.01" placeholder="Enter total GiB hours" />
 
-      <label>Running Duration</label>
-      <input id="durationValue" type="number" />
+      <label>Running Duration Value</label>
+      <input id="durationValue" type="number" step="0.01" placeholder="Enter duration value" />
+
+      <label>Duration Unit</label>
       <select id="durationUnit">
         <option value="hours">Hours</option>
         <option value="minutes">Minutes</option>
         <option value="seconds">Seconds</option>
       </select>
 
-      <button onclick="calculate()">Calculate</button>
+      <button onclick="calculate()" style="width: 100%; margin-top: 16px;">
+        Calculate Averages
+      </button>
+
       <div id="result"></div>
     </div>
   </div>

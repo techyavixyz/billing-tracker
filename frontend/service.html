@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Billing Tracker</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing Tracker - Service Dashboard</title>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <nav>
+  <a href="index.html">Dashboard</a>
   <a href="service.html?service=gcp">GCP</a>
   <a href="service.html?service=aws">AWS</a>
   <a href="service.html?service=hetzner">Hetzner</a>
@@ -25,55 +28,103 @@
 
   <div class="main">
 
+    <h1><span id="service"></span> Billing Overview</h1>
+
     <div class="panel">
-      <div class="box">Service<br><b id="service"></b></div>
-      <div class="box">Usage<br><b id="usage"></b></div>
-      <div class="box">Price ₹<br><b id="price"></b></div>
-      <div class="box">Discounted ₹<br><b id="discount"></b></div>
+      <div class="box">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Service</div>
+        <b id="service-name"></b>
+      </div>
+      <div class="box">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Total Usage</div>
+        <b id="usage"></b>
+      </div>
+      <div class="box">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Original Price</div>
+        <b id="price"></b>
+      </div>
+      <div class="box">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Discounted Price</div>
+        <b id="discount"></b>
+      </div>
     </div>
 
-    <h3>Cost Trend</h3>
-    <canvas id="trendChart" height="80"></canvas>
-
-    <hr />
-
-    <h3>Filters (Saved Data)</h3>
-    <div class="panel">
-      <select id="filterMode">
-        <option value="daily">Daily</option>
-        <option value="monthly">Monthly</option>
-      </select>
-
-      <input id="filterSku" placeholder="SKU" />
-      <input id="filterResource" placeholder="Resource Type" />
-
-      <input id="filterDate" type="date" />
-      <input id="filterMonth" type="month" style="display:none" />
-
-      <button onclick="applyFilters()">Apply</button>
-      <button onclick="clearFilters()">Clear</button>
+    <div class="chart-container">
+      <h3 style="margin-top: 0;">Cost & Usage Trend</h3>
+      <div class="chart-wrapper">
+        <canvas id="trendChart"></canvas>
+      </div>
     </div>
 
-    <h3>Billing Records</h3>
-    <table id="billingTable">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Resource</th>
-          <th>SKU</th>
-          <th>Usage</th>
-          <th>Price ₹</th>
-          <th>Discounted ₹</th>
-          <th>Discount %</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="filter-section">
+      <h3>Filter Billing Data</h3>
+      <div class="filter-grid">
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">View Mode</label>
+          <select id="filterMode">
+            <option value="monthly">Monthly</option>
+            <option value="daily">Daily</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">SKU</label>
+          <input id="filterSku" placeholder="Enter SKU" />
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Resource Type</label>
+          <input id="filterResource" placeholder="Enter resource type" />
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Specific Date</label>
+          <input id="filterDate" type="date" />
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Specific Month</label>
+          <input id="filterMonth" type="month" style="display:none" />
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <button onclick="applyFilters()">Apply Filters</button>
+        <button class="secondary" onclick="clearFilters()">Clear Filters</button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <h3 style="padding: 24px 24px 0; margin: 0;">Billing Records</h3>
+      <table id="billingTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Resource</th>
+            <th>SKU</th>
+            <th>Usage</th>
+            <th>Price</th>
+            <th>Discounted</th>
+            <th>Discount %</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 32px; color: #64748b;">
+              Loading billing records...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
   </div>
 </div>
 
 <script src="js/api.js"></script>
 <script src="js/billing.js"></script>
+<script>
+  document.getElementById('service-name').innerText = service.toUpperCase();
+</script>
 </body>
 </html>

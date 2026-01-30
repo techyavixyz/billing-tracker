@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Billing Tracker</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing Tracker - Dashboard</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
 <nav>
+  <a href="index.html" class="active">Dashboard</a>
   <a href="service.html?service=gcp">GCP</a>
   <a href="service.html?service=aws">AWS</a>
   <a href="service.html?service=hetzner">Hetzner</a>
@@ -22,8 +25,49 @@
   </div>
 
   <div class="main">
-    <h1>Billing Dashboard</h1>
-    <p>Select a service from the top navigation.</p>
+    <h1>Billing Tracker Dashboard</h1>
+    <p style="color: #94a3b8; font-size: 16px; margin-bottom: 48px;">
+      Track and analyze your cloud service costs across multiple providers
+    </p>
+
+    <div class="panel">
+      <div class="box" style="cursor: pointer;" onclick="location.href='service.html?service=gcp'">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Google Cloud Platform</div>
+        <b style="color: #3b82f6;">GCP</b>
+      </div>
+
+      <div class="box" style="cursor: pointer;" onclick="location.href='service.html?service=aws'">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Amazon Web Services</div>
+        <b style="color: #3b82f6;">AWS</b>
+      </div>
+
+      <div class="box" style="cursor: pointer;" onclick="location.href='service.html?service=hetzner'">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Hetzner Cloud</div>
+        <b style="color: #3b82f6;">Hetzner</b>
+      </div>
+
+      <div class="box" style="cursor: pointer;" onclick="location.href='service.html?service=jira'">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Project Management</div>
+        <b style="color: #3b82f6;">Jira</b>
+      </div>
+
+      <div class="box" style="cursor: pointer;" onclick="location.href='service.html?service=bitbucket'">
+        <div style="font-size: 14px; color: #94a3b8; margin-bottom: 4px;">Version Control</div>
+        <b style="color: #3b82f6;">Bitbucket</b>
+      </div>
+    </div>
+
+    <hr />
+
+    <h3>Quick Actions</h3>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+      <button onclick="location.href='add-billing.html'">
+        + Add Billing Data
+      </button>
+      <button class="secondary" onclick="location.href='instance.html'">
+        Calculate Instance Usage
+      </button>
+    </div>
   </div>
 </div>
 
