@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Instance Usage Calculator</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav>
+  <a href="service.html?service=gcp">GCP</a>
+  <a href="service.html?service=aws">AWS</a>
+  <a href="service.html?service=hetzner">Hetzner</a>
+  <a href="service.html?service=jira">Jira</a>
+  <a href="service.html?service=bitbucket">Bitbucket</a>
+  <a href="add-billing.html">Add Billing</a>
+  <a href="instance.html">Instance</a>
+</nav>
+
+<div class="app-container">
+
+  <div class="sidebar">
+    <button onclick="history.back()">← Back</button>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <h2>Instance Usage Calculator</h2>
+
+      <label>Total CPU Usage (vCPU-hours)</label>
+      <input id="cpuUsage" type="number" />
+
+      <label>Total RAM Usage (GiB-hours)</label>
+      <input id="ramUsage" type="number" />
+
+      <label>Running Duration</label>
+      <input id="durationValue" type="number" />
+      <select id="durationUnit">
+        <option value="hours">Hours</option>
+        <option value="minutes">Minutes</option>
+        <option value="seconds">Seconds</option>
+      </select>
+
+      <button onclick="calculate()">Calculate</button>
+      <div id="result"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/instance.js"></script>
+</body>
+</html>

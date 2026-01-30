@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Billing Tracker</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<nav>
+  <a href="service.html?service=gcp">GCP</a>
+  <a href="service.html?service=aws">AWS</a>
+  <a href="service.html?service=hetzner">Hetzner</a>
+  <a href="service.html?service=jira">Jira</a>
+  <a href="service.html?service=bitbucket">Bitbucket</a>
+  <a href="add-billing.html">Add Billing</a>
+  <a href="instance.html">Instance</a>
+</nav>
+
+<div class="app-container">
+
+  <div class="sidebar">
+    <button onclick="history.back()">← Back</button>
+  </div>
+
+  <div class="main">
+
+    <div class="panel">
+      <div class="box">Service<br><b id="service"></b></div>
+      <div class="box">Usage<br><b id="usage"></b></div>
+      <div class="box">Price ₹<br><b id="price"></b></div>
+      <div class="box">Discounted ₹<br><b id="discount"></b></div>
+    </div>
+
+    <h3>Cost Trend</h3>
+    <canvas id="trendChart" height="80"></canvas>
+
+    <hr />
+
+    <h3>Filters (Saved Data)</h3>
+    <div class="panel">
+      <select id="filterMode">
+        <option value="daily">Daily</option>
+        <option value="monthly">Monthly</option>
+      </select>
+
+      <input id="filterSku" placeholder="SKU" />
+      <input id="filterResource" placeholder="Resource Type" />
+
+      <input id="filterDate" type="date" />
+      <input id="filterMonth" type="month" style="display:none" />
+
+      <button onclick="applyFilters()">Apply</button>
+      <button onclick="clearFilters()">Clear</button>
+    </div>
+
+    <h3>Billing Records</h3>
+    <table id="billingTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Resource</th>
+          <th>SKU</th>
+          <th>Usage</th>
+          <th>Price ₹</th>
+          <th>Discounted ₹</th>
+          <th>Discount %</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/billing.js"></script>
+</body>
+</html>

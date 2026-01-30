@@ -1,0 +1,10 @@
+find . -type f \
+  -not -path "./backend/node_modules/*" \
+  -not -path "./backend/package-lock.json" \
+  -not -name "all_files_dump.txt" \
+  -not -iname "readme*" \
+  -exec sh -c '
+    echo "===== FILE: $1 ====="
+    cat "$1"
+    echo
+  ' sh {} \; > all_files_dump.txt

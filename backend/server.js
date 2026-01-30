@@ -1,0 +1,25 @@
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const connectDB = require("./config/db");
+
+const app = express();
+connectDB();
+
+app.use(cors());
+app.use(express.json());
+
+//  Serve frontend
+app.use(express.static(path.join(__dirname, "../frontend")));
+
+app.use("/api/billing", require("./routes/billing.routes"));
+app.use("/api/instance", require("./routes/instance.routes"));
+
+//  Fallback to index.html
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
+});
+
+app.listen(4000, () =>
+  console.log("Billing Tracker running on http://localhost:4000")
+);

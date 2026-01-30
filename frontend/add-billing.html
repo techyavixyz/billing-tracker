@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Billing Data</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav>
+  <a href="service.html?service=gcp">GCP</a>
+  <a href="service.html?service=aws">AWS</a>
+  <a href="service.html?service=hetzner">Hetzner</a>
+  <a href="service.html?service=jira">Jira</a>
+  <a href="service.html?service=bitbucket">Bitbucket</a>
+  <a href="add-billing.html">Add Billing</a>
+  <a href="instance.html">Instance</a>
+</nav>
+
+<div class="app-container">
+
+  <div class="sidebar">
+    <button onclick="history.back()">← Back</button>
+  </div>
+
+  <div class="main">
+
+    <h2>Add Billing Data</h2>
+
+    <div class="card">
+      <select id="type">
+        <option value="daily">Daily</option>
+        <option value="monthly">Monthly</option>
+      </select>
+
+      <input id="service" placeholder="service" />
+      <input id="resourceType" placeholder="resourceType" />
+      <input id="sku" placeholder="sku" />
+      <input id="usage" type="number" placeholder="usage" />
+      <input id="price" type="number" placeholder="price" />
+      <input id="discount" type="number" placeholder="discount %" />
+
+      <input id="date" type="date" />
+      <input id="month" type="month" style="display:none" />
+
+      <button onclick="submitData()">Add Data</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const typeEl = document.getElementById("type");
+const dateEl = document.getElementById("date");
+const monthEl = document.getElementById("month");
+
+typeEl.onchange = () => {
+  dateEl.style.display = typeEl.value === "daily" ? "block" : "none";
+  monthEl.style.display = typeEl.value === "monthly" ? "block" : "none";
+};
+
+async function submitData() {
+  await fetch("/api/billing/add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: typeEl.value,
+      service: service.value,
+      resourceType: resourceType.value,
+      sku: sku.value,
+      usage: +usage.value,
+      price: +price.value,
+      discountPercent: +discount.value,
+      date: date.value,
+      month: month.value
+    })
+  });
+
+  alert("Billing data added");
+}
+</script>
+
+</body>
+</html>
