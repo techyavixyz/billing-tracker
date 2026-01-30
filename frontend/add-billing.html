@@ -40,28 +40,32 @@
       </select>
 
       <label>Service Name</label>
-      <input id="service" placeholder="e.g., gcp, aws, hetzner" />
+      <input id="service" placeholder="e.g., gcp, aws, hetzner" required />
 
       <label>Resource Type</label>
-      <input id="resourceType" placeholder="e.g., compute, storage, network" />
+      <input id="resourceType" placeholder="e.g., compute, storage, network" required />
 
       <label>SKU</label>
-      <input id="sku" placeholder="Stock Keeping Unit identifier" />
+      <input id="sku" placeholder="Stock Keeping Unit identifier" required />
 
       <label>Usage Amount</label>
-      <input id="usage" type="number" step="0.01" placeholder="Quantity used" />
+      <input id="usage" type="number" step="0.01" placeholder="Quantity used" required />
 
       <label>Price (₹)</label>
-      <input id="price" type="number" step="0.01" placeholder="Original price" />
+      <input id="price" type="number" step="0.01" placeholder="Original price" required />
 
       <label>Discount Percentage (%)</label>
-      <input id="discount" type="number" step="0.01" placeholder="Discount percentage" />
+      <input id="discount" type="number" step="0.01" placeholder="Discount percentage" value="0" />
 
-      <label id="dateLabel">Date</label>
-      <input id="date" type="date" />
+      <div id="dateContainer">
+        <label>Date</label>
+        <input id="date" type="date" />
+      </div>
 
-      <label id="monthLabel" style="display:none">Month (YYYY-MM format, e.g., 2024-08)</label>
-      <input id="month" type="month" style="display:none" />
+      <div id="monthContainer" style="display:none">
+        <label>Month (YYYY-MM)</label>
+        <input id="month" type="month" />
+      </div>
 
       <button onclick="submitData()" style="width: 100%; margin-top: 16px;">
         Add Billing Data
@@ -75,27 +79,39 @@
 const typeEl = document.getElementById("type");
 const dateEl = document.getElementById("date");
 const monthEl = document.getElementById("month");
-const dateLabel = document.getElementById("dateLabel");
-const monthLabel = document.getElementById("monthLabel");
+const dateContainer = document.getElementById("dateContainer");
+const monthContainer = document.getElementById("monthContainer");
+
+function setDefaultDate() {
+  const today = new Date().toISOString().split('T')[0];
+  dateEl.value = today;
+}
+
+function setDefaultMonth() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  monthEl.value = `${year}-${month}`;
+}
+
+setDefaultDate();
 
 typeEl.onchange = () => {
   if (typeEl.value === "daily") {
-    dateEl.style.display = "block";
-    dateLabel.style.display = "block";
-    monthEl.style.display = "none";
-    monthLabel.style.display = "none";
+    dateContainer.style.display = "block";
+    monthContainer.style.display = "none";
+    setDefaultDate();
   } else {
-    dateEl.style.display = "none";
-    dateLabel.style.display = "none";
-    monthEl.style.display = "block";
-    monthLabel.style.display = "block";
+    dateContainer.style.display = "none";
+    monthContainer.style.display = "block";
+    setDefaultMonth();
   }
 };
 
 async function submitData() {
-  const serviceVal = document.getElementById("service").value;
-  const resourceTypeVal = document.getElementById("resourceType").value;
-  const skuVal = document.getElementById("sku").value;
+  const serviceVal = document.getElementById("service").value.trim();
+  const resourceTypeVal = document.getElementById("resourceType").value.trim();
+  const skuVal = document.getElementById("sku").value.trim();
   const usageVal = document.getElementById("usage").value;
   const priceVal = document.getElementById("price").value;
   const discountVal = document.getElementById("discount").value;
@@ -134,17 +150,21 @@ async function submitData() {
 
     if (response.ok) {
       alert("Billing data added successfully!");
-
       document.getElementById("service").value = "";
       document.getElementById("resourceType").value = "";
       document.getElementById("sku").value = "";
       document.getElementById("usage").value = "";
       document.getElementById("price").value = "";
-      document.getElementById("discount").value = "";
-      dateEl.value = "";
-      monthEl.value = "";
+      document.getElementById("discount").value = "0";
+
+      if (typeEl.value === "daily") {
+        setDefaultDate();
+      } else {
+        setDefaultMonth();
+      }
     } else {
-      alert("Failed to add billing data");
+      const errorData = await response.json();
+      alert("Failed to add billing data: " + (errorData.error || "Unknown error"));
     }
   } catch (error) {
     alert("Error: " + error.message);

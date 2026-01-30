@@ -6,43 +6,62 @@ const router = express.Router();
  * ADD BILLING DATA (DEDICATED ENDPOINT)
  */
 router.post("/add", async (req, res) => {
-  const {
-    service,
-    resourceType,
-    sku,
-    usage,
-    price,
-    discountPercent,
-    type,
-    date,
-    month
-  } = req.body;
+  try {
+    const {
+      service,
+      resourceType,
+      sku,
+      usage,
+      price,
+      discountPercent,
+      type,
+      date,
+      month
+    } = req.body;
 
-  let finalDate;
+    if (!service || !resourceType || !sku || usage == null || price == null) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
-  if (type === "daily") {
-    finalDate = new Date(date);
-  } else if (type === "monthly") {
-    finalDate = new Date(`${month}-01`);
-  } else {
-    return res.status(400).json({ error: "Invalid type" });
+    let finalDate;
+
+    if (type === "daily") {
+      if (!date) {
+        return res.status(400).json({ error: "Date is required for daily entries" });
+      }
+      finalDate = new Date(date);
+    } else if (type === "monthly") {
+      if (!month) {
+        return res.status(400).json({ error: "Month is required for monthly entries" });
+      }
+      finalDate = new Date(`${month}-01`);
+    } else {
+      return res.status(400).json({ error: "Invalid type. Must be 'daily' or 'monthly'" });
+    }
+
+    if (isNaN(finalDate.getTime())) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    const discountedPrice = price - (price * (discountPercent || 0)) / 100;
+
+    const record = await Billing.create({
+      service: service.toLowerCase(),
+      resourceType,
+      sku,
+      usage,
+      usageUnit: "unit",
+      price,
+      discountedPrice,
+      date: finalDate,
+      entryType: type
+    });
+
+    res.json(record);
+  } catch (error) {
+    console.error("Error adding billing record:", error);
+    res.status(500).json({ error: "Failed to add billing record: " + error.message });
   }
-
-  const discountedPrice = price - (price * discountPercent) / 100;
-
-  const record = await Billing.create({
-    service,
-    resourceType,
-    sku,
-    usage,
-    usageUnit: "unit",
-    price,
-    discountedPrice,
-    date: finalDate,
-    entryType: type
-  });
-
-  res.json(record);
 });
 
 /**
