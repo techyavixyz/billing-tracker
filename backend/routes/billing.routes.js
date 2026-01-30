@@ -85,15 +85,17 @@ router.get("/", async (req, res) => {
  * RAW SAVED DATA (FILTERABLE)
  */
 router.get("/raw", async (req, res) => {
-  const { service, sku, resourceType, date, month } = req.query;
+  const { service, sku, resourceType, date, month, entryType } = req.query;
   const query = { service };
 
   if (sku) query.sku = sku;
   if (resourceType) query.resourceType = resourceType;
+  if (entryType) query.entryType = entryType;
 
   if (date) {
     const d = new Date(date);
     query.date = { $gte: d, $lt: new Date(d.setDate(d.getDate() + 1)) };
+    query.entryType = "daily";
   }
 
   if (month) {
@@ -101,6 +103,7 @@ router.get("/raw", async (req, res) => {
     const end = new Date(start);
     end.setMonth(end.getMonth() + 1);
     query.date = { $gte: start, $lt: end };
+    query.entryType = "monthly";
   }
 
   res.json(await Billing.find(query).sort({ date: 1 }));

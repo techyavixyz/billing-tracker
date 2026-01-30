@@ -9,7 +9,7 @@ async function loadOverview() {
 
   const data = await fetchBilling(service, "monthly");
   updateSummaryAndChart(data, "period");
-  loadTable({ service });
+  loadTable({ service, entryType: "monthly" });
 }
 
 async function applyFilters() {
@@ -19,11 +19,16 @@ async function applyFilters() {
   if (filterResource().value) filters.resourceType = filterResource().value;
 
   const mode = document.getElementById("filterMode").value;
-  if (mode === "daily" && filterDate().value) {
-    filters.date = filterDate().value;
-  }
-  if (mode === "monthly" && filterMonth().value) {
-    filters.month = filterMonth().value;
+  if (mode === "daily") {
+    filters.entryType = "daily";
+    if (filterDate().value) {
+      filters.date = filterDate().value;
+    }
+  } else {
+    filters.entryType = "monthly";
+    if (filterMonth().value) {
+      filters.month = filterMonth().value;
+    }
   }
 
   activeFilters = filters;
