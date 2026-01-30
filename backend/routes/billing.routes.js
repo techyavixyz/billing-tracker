@@ -128,4 +128,63 @@ router.get("/raw", async (req, res) => {
   res.json(await Billing.find(query).sort({ date: 1 }));
 });
 
+router.get("/export-csv", async (req, res) => {
+  const { service, sku, resourceType, date, month, entryType } = req.query;
+  const query = { service };
+
+  if (sku) query.sku = sku;
+  if (resourceType) query.resourceType = resourceType;
+  if (entryType) query.entryType = entryType;
+
+  if (date) {
+    const d = new Date(date);
+    query.date = { $gte: d, $lt: new Date(d.setDate(d.getDate() + 1)) };
+    query.entryType = "daily";
+  }
+
+  if (month) {
+    const start = new Date(`${month}-01`);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + 1);
+    query.date = { $gte: start, $lt: end };
+    query.entryType = "monthly";
+  }
+
+  const records = await Billing.find(query).sort({ date: 1 });
+
+  const csvRows = [];
+  csvRows.push("Date,Service,Resource Type,SKU,Usage,Price,Discounted Price,Discount %,Entry Type");
+
+  records.forEach(r => {
+    const discountPercent = r.price > 0 ? ((r.price - r.discountedPrice) / r.price) * 100 : 0;
+    const dateObj = new Date(r.date);
+    let dateDisplay;
+
+    if (r.entryType === "monthly") {
+      dateDisplay = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    } else {
+      dateDisplay = dateObj.toLocaleDateString();
+    }
+
+    csvRows.push([
+      `"${dateDisplay}"`,
+      `"${r.service}"`,
+      `"${r.resourceType}"`,
+      `"${r.sku}"`,
+      r.usage.toFixed(2),
+      r.price.toFixed(2),
+      r.discountedPrice.toFixed(2),
+      discountPercent.toFixed(2),
+      `"${r.entryType}"`
+    ].join(","));
+  });
+
+  const csv = csvRows.join("\n");
+  const filename = `billing-${service}-${Date.now()}.csv`;
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(csv);
+});
+
 module.exports = router;

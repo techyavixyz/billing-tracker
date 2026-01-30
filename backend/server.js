@@ -14,6 +14,7 @@ app.use(express.static(path.join(__dirname, "../frontend")));
 
 app.use("/api/billing", require("./routes/billing.routes"));
 app.use("/api/instance", require("./routes/instance.routes"));
+app.use("/api/checklist", require("./routes/checklist.routes"));
 
 //  Fallback to index.html
 app.get("*", (req, res) => {

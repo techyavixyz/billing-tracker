@@ -393,4 +393,10 @@ const filterResource = () => document.getElementById("filterResource");
 const filterDate = () => document.getElementById("filterDate");
 const filterMonth = () => document.getElementById("filterMonth");
 
+function exportCSV() {
+  const filters = activeFilters || { service };
+  const params = new URLSearchParams(filters).toString();
+  window.location.href = `/api/billing/export-csv?${params}`;
+}
+
 loadOverview();

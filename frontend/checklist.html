@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Checklist</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="service.html?service=gcp">GCP</a>
+  <a href="service.html?service=aws">AWS</a>
+  <a href="service.html?service=hetzner">Hetzner</a>
+  <a href="service.html?service=jira">Jira</a>
+  <a href="service.html?service=bitbucket">Bitbucket</a>
+  <a href="add-billing.html">Add Billing</a>
+  <a href="instance.html">Instance</a>
+  <a href="checklist.html" class="active">Checklist</a>
+</nav>
+
+<div class="app-container">
+
+  <div class="sidebar">
+    <button onclick="history.back()">← Back</button>
+  </div>
+
+  <div class="main">
+
+    <h1>Daily Checklist</h1>
+    <p style="color: #94a3b8; font-size: 16px; margin-bottom: 32px;">
+      Manage daily operational tasks for all services
+    </p>
+
+    <div class="card">
+      <h2 style="margin-top: 0; margin-bottom: 24px;">Add New Task</h2>
+
+      <label>Service</label>
+      <select id="service">
+        <option value="gcp">GCP</option>
+        <option value="aws">AWS</option>
+        <option value="hetzner">Hetzner</option>
+        <option value="jira">Jira</option>
+        <option value="bitbucket">Bitbucket</option>
+      </select>
+
+      <label>Date</label>
+      <input id="taskDate" type="date" required />
+
+      <label>Task Name</label>
+      <input id="taskName" placeholder="e.g., Check backup status" required />
+
+      <label>Description</label>
+      <input id="taskDescription" placeholder="Additional details (optional)" />
+
+      <button onclick="addTask()" style="width: 100%; margin-top: 16px;">
+        Add Task
+      </button>
+    </div>
+
+    <div class="filter-section" style="margin-top: 32px;">
+      <h3>Filter Tasks</h3>
+      <div class="filter-grid">
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Service</label>
+          <select id="filterService">
+            <option value="">All Services</option>
+            <option value="gcp">GCP</option>
+            <option value="aws">AWS</option>
+            <option value="hetzner">Hetzner</option>
+            <option value="jira">Jira</option>
+            <option value="bitbucket">Bitbucket</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Date</label>
+          <input id="filterDate" type="date" />
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Leave empty for all dates</div>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Start Date</label>
+          <input id="filterStartDate" type="date" />
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">End Date</label>
+          <input id="filterEndDate" type="date" />
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <button onclick="loadTasks()">
+          Apply Filters
+        </button>
+        <button class="secondary" onclick="clearFilters()">
+          Reset
+        </button>
+        <button onclick="exportCSV()" style="background: linear-gradient(135deg, #10b981, #059669); border: none; color: white; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+          Export CSV
+        </button>
+      </div>
+      <div id="filterStatus" style="margin-top: 12px; font-size: 13px; color: #94a3b8;"></div>
+    </div>
+
+    <div class="table-container" style="margin-top: 32px;">
+      <h3 style="padding: 24px 24px 0; margin: 0;">Tasks</h3>
+      <table id="checklistTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Service</th>
+            <th>Task Name</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Checked By</th>
+            <th>Checked At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 32px; color: #64748b;">
+              Loading tasks...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/checklist.js"></script>
+</body>
+</html>
