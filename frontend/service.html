@@ -57,41 +57,50 @@
     </div>
 
     <div class="filter-section">
-      <h3>Filter Billing Data</h3>
+      <h3>Filter & Analyze Trends</h3>
       <div class="filter-grid">
         <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">View Mode</label>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">📊 View Mode</label>
           <select id="filterMode">
-            <option value="monthly">Monthly</option>
-            <option value="daily">Daily</option>
+            <option value="monthly">Monthly View</option>
+            <option value="daily">Daily View</option>
           </select>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Changes chart time frame</div>
         </div>
 
         <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">SKU</label>
-          <input id="filterSku" placeholder="Enter SKU" />
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">🏷️ Resource Type</label>
+          <input id="filterResource" placeholder="e.g., compute, storage" />
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Filter by resource</div>
         </div>
 
         <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Resource Type</label>
-          <input id="filterResource" placeholder="Enter resource type" />
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">🔖 SKU</label>
+          <input id="filterSku" placeholder="e.g., n1-standard-1" />
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Filter by SKU</div>
         </div>
 
-        <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Specific Date</label>
+        <div id="dateFilterContainer">
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">📅 Date</label>
           <input id="filterDate" type="date" style="display:none" />
         </div>
 
-        <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Specific Month</label>
+        <div id="monthFilterContainer">
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">📆 Month</label>
           <input id="filterMonth" type="month" />
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Optional: specific period</div>
         </div>
       </div>
 
       <div class="filter-actions">
-        <button onclick="applyFilters()">Apply Filters</button>
-        <button class="secondary" onclick="clearFilters()">Clear Filters</button>
+        <button onclick="applyFilters()" style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; color: white; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+          🔍 Apply Filters
+        </button>
+        <button class="secondary" onclick="clearFilters()" style="background: transparent; border: 1px solid #475569; color: #cbd5e1; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+          Reset
+        </button>
       </div>
+      <div id="filterStatus" style="margin-top: 12px; font-size: 13px; color: #94a3b8;"></div>
     </div>
 
     <div class="table-container">

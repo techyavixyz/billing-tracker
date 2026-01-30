@@ -8,6 +8,7 @@ async function loadOverview() {
   activeFilters = null;
 
   const data = await fetchBilling(service, "monthly");
+  document.getElementById("filterStatus").innerHTML = '<span style="color: #60a5fa;">📊 Monthly view • All data</span>';
   updateSummaryAndChart(data, "period");
   loadTable({ service, entryType: "monthly" });
 }
@@ -15,8 +16,11 @@ async function loadOverview() {
 async function applyFilters() {
   const filters = { service };
 
-  if (filterSku().value) filters.sku = filterSku().value;
-  if (filterResource().value) filters.resourceType = filterResource().value;
+  const resourceVal = filterResource().value.trim();
+  const skuVal = filterSku().value.trim();
+
+  if (resourceVal) filters.resourceType = resourceVal;
+  if (skuVal) filters.sku = skuVal;
 
   const mode = document.getElementById("filterMode").value;
   if (mode === "daily") {
@@ -35,7 +39,25 @@ async function applyFilters() {
 
   const rows = await fetchRaw(filters);
 
+  if (rows.length === 0) {
+    document.getElementById("filterStatus").innerHTML = `<span style="color: #f97316;">⚠️ No data found for selected filters</span>`;
+    const emptyData = [];
+    updateSummaryAndChart(emptyData, "period");
+    renderTable([]);
+    return;
+  }
+
   const aggregated = aggregateRows(rows, mode);
+
+  let statusMsg = `📈 Chart showing <strong>${mode}</strong> view`;
+  const filterCount = [resourceVal, skuVal].filter(v => v).length;
+  if (filterCount > 0) {
+    statusMsg += ` • Filtered by: ${[resourceVal && `Resource: ${resourceVal}`, skuVal && `SKU: ${skuVal}`].filter(Boolean).join(", ")}`;
+  }
+  statusMsg += ` • Records: ${rows.length}`;
+
+  document.getElementById("filterStatus").innerHTML = `<span style="color: #10b981;">${statusMsg}</span>`;
+
   updateSummaryAndChart(aggregated, "period");
   renderTable(rows);
 }
@@ -49,6 +71,8 @@ function clearFilters() {
 
   filterDate().style.display = "none";
   filterMonth().style.display = "block";
+
+  document.getElementById("filterStatus").innerHTML = "";
 
   loadOverview();
 }
@@ -94,13 +118,16 @@ function updateSummaryAndChart(data, labelKey) {
   const discountedPrices = data.map(d => d.discountedPrice);
   const usageData = data.map(d => d.usage);
 
-  drawChart(labels, prices, discountedPrices, usageData);
+  const mode = document.getElementById("filterMode").value;
+  drawChart(labels, prices, discountedPrices, usageData, mode);
 }
 
-function drawChart(labels, prices, discountedPrices, usageData) {
+function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly") {
   const ctx = document.getElementById("trendChart");
 
   if (chart) chart.destroy();
+
+  const timeframeText = mode === "daily" ? "Daily" : "Monthly";
 
   chart = new Chart(ctx, {
     type: "line",
@@ -160,6 +187,19 @@ function drawChart(labels, prices, discountedPrices, usageData) {
         intersect: false,
       },
       plugins: {
+        title: {
+          display: true,
+          text: `${timeframeText} Cost & Usage Trend`,
+          color: '#f1f5f9',
+          font: {
+            size: 14,
+            weight: '600'
+          },
+          padding: {
+            top: 10,
+            bottom: 20
+          }
+        },
         legend: {
           display: true,
           position: 'top',
@@ -322,8 +362,26 @@ function renderTable(rows) {
 
 document.getElementById("filterMode").addEventListener("change", () => {
   const mode = document.getElementById("filterMode").value;
-  filterDate().style.display = mode === "daily" ? "block" : "none";
-  filterMonth().style.display = mode === "monthly" ? "block" : "none";
+  const dateContainer = document.getElementById("dateFilterContainer");
+  const monthContainer = document.getElementById("monthFilterContainer");
+
+  if (mode === "daily") {
+    dateContainer.style.display = "block";
+    monthContainer.style.display = "none";
+    filterDate().style.display = "block";
+    filterMonth().style.display = "none";
+    filterDate().value = "";
+    filterMonth().value = "";
+  } else {
+    dateContainer.style.display = "none";
+    monthContainer.style.display = "block";
+    filterDate().style.display = "none";
+    filterMonth().style.display = "block";
+    filterDate().value = "";
+    filterMonth().value = "";
+  }
+
+  document.getElementById("filterStatus").innerHTML = `<span style="color: #60a5fa;">📊 Changed to ${mode === "daily" ? "Daily" : "Monthly"} view • Chart time frame updated</span>`;
 });
 
 const usageEl = () => document.getElementById("usage");

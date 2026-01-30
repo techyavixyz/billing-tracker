@@ -54,8 +54,38 @@
       <label>Price (₹)</label>
       <input id="price" type="number" step="0.01" placeholder="Original price" required />
 
-      <label>Discount Percentage (%)</label>
-      <input id="discount" type="number" step="0.01" placeholder="Discount percentage" value="0" />
+      <label>Discount</label>
+      <div id="discountBuilder">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 13px; color: #cbd5e1; margin-bottom: 8px; display: block;">Discount Type</label>
+          <select id="discountType" style="margin-bottom: 12px;">
+            <option value="percentage">Percentage (%)</option>
+            <option value="fixed">Fixed Amount (₹)</option>
+            <option value="formula">Custom Formula</option>
+          </select>
+        </div>
+
+        <div id="percentageInput">
+          <label style="font-size: 13px; color: #cbd5e1; margin-bottom: 8px; display: block;">Discount Percentage</label>
+          <input id="discount" type="number" step="0.01" placeholder="Enter discount percentage" value="0" />
+          <div id="discountSuggestions" style="margin-top: 8px; font-size: 12px; color: #64748b;"></div>
+        </div>
+
+        <div id="fixedInput" style="display:none;">
+          <label style="font-size: 13px; color: #cbd5e1; margin-bottom: 8px; display: block;">Discount Amount (₹)</label>
+          <input id="discountFixed" type="number" step="0.01" placeholder="Enter fixed discount amount" value="0" />
+        </div>
+
+        <div id="formulaInput" style="display:none;">
+          <label style="font-size: 13px; color: #cbd5e1; margin-bottom: 8px; display: block;">Formula</label>
+          <input id="discountFormula" type="text" placeholder="e.g., price * 0.1, usage > 100 ? 15 : 5" />
+          <div style="font-size: 12px; color: #64748b; margin-top: 8px;">
+            Available variables: <code style="background: #1e293b; padding: 2px 6px; border-radius: 3px;">price</code>,
+            <code style="background: #1e293b; padding: 2px 6px; border-radius: 3px;">usage</code>
+          </div>
+          <div id="formulaError" style="color: #ef4444; margin-top: 4px; font-size: 12px;"></div>
+        </div>
+      </div>
 
       <div id="dateContainer">
         <label>Date</label>
@@ -81,6 +111,38 @@ const dateEl = document.getElementById("date");
 const monthEl = document.getElementById("month");
 const dateContainer = document.getElementById("dateContainer");
 const monthContainer = document.getElementById("monthContainer");
+const discountTypeEl = document.getElementById("discountType");
+const serviceEl = document.getElementById("service");
+
+const DISCOUNT_PRESETS = {
+  gcp: [
+    { label: "Standard (5%)", value: 5 },
+    { label: "Volume (10%)", value: 10 },
+    { label: "Enterprise (15%)", value: 15 },
+    { label: "Custom formula", formula: "usage > 1000 ? 20 : 10" }
+  ],
+  aws: [
+    { label: "On-Demand", value: 0 },
+    { label: "Reserved 1yr (20%)", value: 20 },
+    { label: "Reserved 3yr (40%)", value: 40 },
+    { label: "Spot (70%)", value: 70 }
+  ],
+  hetzner: [
+    { label: "Standard (5%)", value: 5 },
+    { label: "Volume (8%)", value: 8 },
+    { label: "Annual (12%)", value: 12 }
+  ],
+  jira: [
+    { label: "Free", value: 0 },
+    { label: "Standard (10%)", value: 10 },
+    { label: "Premium (15%)", value: 15 }
+  ],
+  bitbucket: [
+    { label: "Free", value: 0 },
+    { label: "Standard (10%)", value: 10 },
+    { label: "Premium (15%)", value: 15 }
+  ]
+};
 
 function setDefaultDate() {
   const today = new Date().toISOString().split('T')[0];
@@ -94,7 +156,61 @@ function setDefaultMonth() {
   monthEl.value = `${year}-${month}`;
 }
 
+function updateDiscountSuggestions() {
+  const service = serviceEl.value.trim().toLowerCase();
+  const suggestionsEl = document.getElementById("discountSuggestions");
+  suggestionsEl.innerHTML = "";
+
+  const presets = DISCOUNT_PRESETS[service];
+  if (!presets) return;
+
+  const suggestions = presets.map((p, i) => {
+    if (p.formula) {
+      return `<button type="button" style="background:none; border:none; color:#3b82f6; cursor:pointer; padding:4px 8px; text-align:left;" onclick="setDiscountFormula('${p.formula.replace(/'/g, "&#39;")}')">${p.label}</button>`;
+    }
+    return `<button type="button" style="background:none; border:none; color:#3b82f6; cursor:pointer; padding:4px 8px; text-align:left;" onclick="setDiscount(${p.value})">${p.label}</button>`;
+  });
+
+  if (suggestions.length > 0) {
+    suggestionsEl.innerHTML = `<div style="color:#cbd5e1; font-size:12px; margin-bottom:4px;">Suggestions:</div>` + suggestions.join(" ");
+  }
+}
+
+function setDiscount(value) {
+  document.getElementById("discount").value = value;
+  discountTypeEl.value = "percentage";
+  updateDiscountTypeUI();
+}
+
+function setDiscountFormula(formula) {
+  document.getElementById("discountFormula").value = formula;
+  discountTypeEl.value = "formula";
+  updateDiscountTypeUI();
+}
+
+function updateDiscountTypeUI() {
+  const type = discountTypeEl.value;
+  document.getElementById("percentageInput").style.display = type === "percentage" ? "block" : "none";
+  document.getElementById("fixedInput").style.display = type === "fixed" ? "block" : "none";
+  document.getElementById("formulaInput").style.display = type === "formula" ? "block" : "none";
+
+  if (type === "percentage") {
+    updateDiscountSuggestions();
+  }
+}
+
+function calculateDiscount(price, usage, formula) {
+  try {
+    const result = Function('price', 'usage', `return ${formula};`)(price, usage);
+    return Math.min(Math.max(result, 0), 100);
+  } catch (e) {
+    throw new Error("Invalid formula: " + e.message);
+  }
+}
+
 setDefaultDate();
+serviceEl.addEventListener("change", updateDiscountSuggestions);
+discountTypeEl.addEventListener("change", updateDiscountTypeUI);
 
 typeEl.onchange = () => {
   if (typeEl.value === "daily") {
@@ -112,9 +228,8 @@ async function submitData() {
   const serviceVal = document.getElementById("service").value.trim();
   const resourceTypeVal = document.getElementById("resourceType").value.trim();
   const skuVal = document.getElementById("sku").value.trim();
-  const usageVal = document.getElementById("usage").value;
-  const priceVal = document.getElementById("price").value;
-  const discountVal = document.getElementById("discount").value;
+  const usageVal = parseFloat(document.getElementById("usage").value);
+  const priceVal = parseFloat(document.getElementById("price").value);
 
   if (!serviceVal || !resourceTypeVal || !skuVal || !usageVal || !priceVal) {
     alert("Please fill in all required fields");
@@ -131,7 +246,26 @@ async function submitData() {
     return;
   }
 
+  let discountPercent = 0;
+  const discountType = discountTypeEl.value;
+
   try {
+    if (discountType === "percentage") {
+      discountPercent = parseFloat(document.getElementById("discount").value) || 0;
+    } else if (discountType === "fixed") {
+      const discountAmount = parseFloat(document.getElementById("discountFixed").value) || 0;
+      discountPercent = (discountAmount / priceVal) * 100;
+    } else if (discountType === "formula") {
+      const formula = document.getElementById("discountFormula").value;
+      if (!formula.trim()) {
+        alert("Please enter a formula");
+        return;
+      }
+      discountPercent = calculateDiscount(priceVal, usageVal, formula);
+    }
+
+    discountPercent = Math.min(Math.max(discountPercent, 0), 100);
+
     const response = await fetch("/api/billing/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,9 +274,9 @@ async function submitData() {
         service: serviceVal,
         resourceType: resourceTypeVal,
         sku: skuVal,
-        usage: +usageVal,
-        price: +priceVal,
-        discountPercent: +discountVal || 0,
+        usage: usageVal,
+        price: priceVal,
+        discountPercent: discountPercent,
         date: dateEl.value,
         month: monthEl.value
       })
@@ -156,6 +290,11 @@ async function submitData() {
       document.getElementById("usage").value = "";
       document.getElementById("price").value = "";
       document.getElementById("discount").value = "0";
+      document.getElementById("discountFixed").value = "0";
+      document.getElementById("discountFormula").value = "";
+      document.getElementById("formulaError").innerHTML = "";
+      discountTypeEl.value = "percentage";
+      updateDiscountTypeUI();
 
       if (typeEl.value === "daily") {
         setDefaultDate();
@@ -170,6 +309,25 @@ async function submitData() {
     alert("Error: " + error.message);
   }
 }
+
+document.getElementById("discountFormula").addEventListener("blur", () => {
+  const formula = document.getElementById("discountFormula").value;
+  const errorEl = document.getElementById("formulaError");
+  errorEl.innerHTML = "";
+
+  if (!formula.trim()) return;
+
+  try {
+    const priceVal = parseFloat(document.getElementById("price").value) || 10;
+    const usageVal = parseFloat(document.getElementById("usage").value) || 100;
+    const result = calculateDiscount(priceVal, usageVal, formula);
+    errorEl.innerHTML = `<span style="color:#10b981;">Preview: ${result.toFixed(2)}%</span>`;
+  } catch (e) {
+    errorEl.innerHTML = `<span style="color:#ef4444;">${e.message}</span>`;
+  }
+});
+
+updateDiscountTypeUI();
 </script>
 
 </body>
