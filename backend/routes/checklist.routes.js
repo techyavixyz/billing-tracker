@@ -2,11 +2,21 @@ const express = require("express");
 const DailyChecklist = require("../models/DailyChecklist");
 const router = express.Router();
 
+router.get("/areas", async (req, res) => {
+  try {
+    const areas = await DailyChecklist.distinct("area");
+    res.json(areas.sort());
+  } catch (error) {
+    console.error("Error fetching areas:", error);
+    res.status(500).json({ error: "Failed to fetch areas: " + error.message });
+  }
+});
+
 router.post("/add", async (req, res) => {
   try {
-    const { service, date, taskName, description } = req.body;
+    const { area, date, taskName, description } = req.body;
 
-    if (!service || !date || !taskName) {
+    if (!area || !date || !taskName) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -16,7 +26,7 @@ router.post("/add", async (req, res) => {
     }
 
     const task = await DailyChecklist.create({
-      service: service.toLowerCase(),
+      area: area.trim(),
       date: taskDate,
       taskName,
       description: description || ""
@@ -31,10 +41,10 @@ router.post("/add", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { service, date, startDate, endDate } = req.query;
+    const { area, date, startDate, endDate } = req.query;
     const query = {};
 
-    if (service) query.service = service.toLowerCase();
+    if (area) query.area = area.trim();
 
     if (date) {
       const d = new Date(date);
@@ -104,10 +114,10 @@ router.delete("/:id", async (req, res) => {
 
 router.get("/export-csv", async (req, res) => {
   try {
-    const { service, date, startDate, endDate } = req.query;
+    const { area, date, startDate, endDate } = req.query;
     const query = {};
 
-    if (service) query.service = service.toLowerCase();
+    if (area) query.area = area.trim();
 
     if (date) {
       const d = new Date(date);
@@ -127,7 +137,7 @@ router.get("/export-csv", async (req, res) => {
     const tasks = await DailyChecklist.find(query).sort({ date: -1, createdAt: -1 });
 
     const csvRows = [];
-    csvRows.push("Date,Service,Task Name,Description,Completed,Checked By,Checked At");
+    csvRows.push("Date,Area,Task Name,Description,Completed,Checked By,Checked At");
 
     tasks.forEach(task => {
       const taskDate = new Date(task.date).toLocaleDateString();
@@ -137,7 +147,7 @@ router.get("/export-csv", async (req, res) => {
 
       csvRows.push([
         `"${taskDate}"`,
-        `"${task.service}"`,
+        `"${task.area}"`,
         `"${task.taskName}"`,
         `"${description}"`,
         task.isCompleted ? "Yes" : "No",
@@ -147,7 +157,7 @@ router.get("/export-csv", async (req, res) => {
     });
 
     const csv = csvRows.join("\n");
-    const filename = `checklist-${service || 'all'}-${Date.now()}.csv`;
+    const filename = `checklist-${area || 'all'}-${Date.now()}.csv`;
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

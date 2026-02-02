@@ -3,15 +3,41 @@ function setDefaultDate() {
   document.getElementById("taskDate").value = today;
 }
 
+async function loadAreaSuggestions() {
+  try {
+    const response = await fetch("/api/checklist/areas");
+    const areas = await response.json();
+
+    const areaSuggestions = document.getElementById("areaSuggestions");
+    const filterAreaSuggestions = document.getElementById("filterAreaSuggestions");
+
+    areaSuggestions.innerHTML = "";
+    filterAreaSuggestions.innerHTML = "";
+
+    areas.forEach(area => {
+      const option1 = document.createElement("option");
+      option1.value = area;
+      areaSuggestions.appendChild(option1);
+
+      const option2 = document.createElement("option");
+      option2.value = area;
+      filterAreaSuggestions.appendChild(option2);
+    });
+  } catch (error) {
+    console.error("Error loading area suggestions:", error);
+  }
+}
+
 setDefaultDate();
+loadAreaSuggestions();
 
 async function addTask() {
-  const service = document.getElementById("service").value;
+  const area = document.getElementById("area").value.trim();
   const date = document.getElementById("taskDate").value;
   const taskName = document.getElementById("taskName").value.trim();
   const description = document.getElementById("taskDescription").value.trim();
 
-  if (!service || !date || !taskName) {
+  if (!area || !date || !taskName) {
     alert("Please fill in all required fields");
     return;
   }
@@ -21,7 +47,7 @@ async function addTask() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        service,
+        area,
         date,
         taskName,
         description
@@ -30,10 +56,12 @@ async function addTask() {
 
     if (response.ok) {
       alert("Task added successfully!");
+      document.getElementById("area").value = "";
       document.getElementById("taskName").value = "";
       document.getElementById("taskDescription").value = "";
       setDefaultDate();
       loadTasks();
+      loadAreaSuggestions();
     } else {
       const errorData = await response.json();
       alert("Failed to add task: " + (errorData.error || "Unknown error"));
@@ -46,12 +74,12 @@ async function addTask() {
 async function loadTasks() {
   const params = new URLSearchParams();
 
-  const filterService = document.getElementById("filterService").value;
+  const filterArea = document.getElementById("filterArea").value.trim();
   const filterDate = document.getElementById("filterDate").value;
   const filterStartDate = document.getElementById("filterStartDate").value;
   const filterEndDate = document.getElementById("filterEndDate").value;
 
-  if (filterService) params.append("service", filterService);
+  if (filterArea) params.append("area", filterArea);
   if (filterDate) params.append("date", filterDate);
   if (filterStartDate) params.append("startDate", filterStartDate);
   if (filterEndDate) params.append("endDate", filterEndDate);
@@ -61,7 +89,7 @@ async function loadTasks() {
     const tasks = await response.json();
     renderTasks(tasks);
 
-    const filterCount = [filterService, filterDate, filterStartDate, filterEndDate].filter(v => v).length;
+    const filterCount = [filterArea, filterDate, filterStartDate, filterEndDate].filter(v => v).length;
     if (filterCount > 0) {
       document.getElementById("filterStatus").innerHTML = `<span style="color: #10b981;">Showing ${tasks.length} task(s) with ${filterCount} filter(s) applied</span>`;
     } else {
@@ -97,7 +125,7 @@ function renderTasks(tasks) {
     tbody.innerHTML += `
       <tr>
         <td>${taskDate}</td>
-        <td style="text-transform: uppercase;">${task.service}</td>
+        <td>${task.area}</td>
         <td>${task.taskName}</td>
         <td>${task.description || ""}</td>
         <td><span style="color: ${statusColor}; font-weight: 600;">${statusText}</span></td>
@@ -160,6 +188,7 @@ async function deleteTask(id) {
     if (response.ok) {
       alert("Task deleted successfully!");
       loadTasks();
+      loadAreaSuggestions();
     } else {
       const errorData = await response.json();
       alert("Failed to delete task: " + (errorData.error || "Unknown error"));
@@ -170,7 +199,7 @@ async function deleteTask(id) {
 }
 
 function clearFilters() {
-  document.getElementById("filterService").value = "";
+  document.getElementById("filterArea").value = "";
   document.getElementById("filterDate").value = "";
   document.getElementById("filterStartDate").value = "";
   document.getElementById("filterEndDate").value = "";
@@ -181,12 +210,12 @@ function clearFilters() {
 function exportCSV() {
   const params = new URLSearchParams();
 
-  const filterService = document.getElementById("filterService").value;
+  const filterArea = document.getElementById("filterArea").value.trim();
   const filterDate = document.getElementById("filterDate").value;
   const filterStartDate = document.getElementById("filterStartDate").value;
   const filterEndDate = document.getElementById("filterEndDate").value;
 
-  if (filterService) params.append("service", filterService);
+  if (filterArea) params.append("area", filterArea);
   if (filterDate) params.append("date", filterDate);
   if (filterStartDate) params.append("startDate", filterStartDate);
   if (filterEndDate) params.append("endDate", filterEndDate);

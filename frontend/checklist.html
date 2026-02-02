@@ -36,14 +36,12 @@
     <div class="card">
       <h2 style="margin-top: 0; margin-bottom: 24px;">Add New Task</h2>
 
-      <label>Service</label>
-      <select id="service">
-        <option value="gcp">GCP</option>
-        <option value="aws">AWS</option>
-        <option value="hetzner">Hetzner</option>
-        <option value="jira">Jira</option>
-        <option value="bitbucket">Bitbucket</option>
-      </select>
+      <label>Area</label>
+      <div style="position: relative;">
+        <input id="area" list="areaSuggestions" placeholder="Type area (e.g., Infrastructure, Development, Security)" required autocomplete="off" />
+        <datalist id="areaSuggestions"></datalist>
+        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Start typing to see suggestions from existing areas</div>
+      </div>
 
       <label>Date</label>
       <input id="taskDate" type="date" required />
@@ -63,15 +61,10 @@
       <h3>Filter Tasks</h3>
       <div class="filter-grid">
         <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Service</label>
-          <select id="filterService">
-            <option value="">All Services</option>
-            <option value="gcp">GCP</option>
-            <option value="aws">AWS</option>
-            <option value="hetzner">Hetzner</option>
-            <option value="jira">Jira</option>
-            <option value="bitbucket">Bitbucket</option>
-          </select>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Area</label>
+          <input id="filterArea" list="filterAreaSuggestions" placeholder="Filter by area" autocomplete="off" />
+          <datalist id="filterAreaSuggestions"></datalist>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Leave empty for all areas</div>
         </div>
 
         <div>
@@ -111,7 +104,7 @@
         <thead>
           <tr>
             <th>Date</th>
-            <th>Service</th>
+            <th>Area</th>
             <th>Task Name</th>
             <th>Description</th>
             <th>Status</th>

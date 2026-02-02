@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const DailyChecklistSchema = new mongoose.Schema({
-  service: { type: String, required: true },
+  area: { type: String, required: true },
   date: { type: Date, required: true },
   taskName: { type: String, required: true },
   description: String,

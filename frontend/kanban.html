@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Board</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .kanban-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .kanban-column {
+      background: rgba(2, 6, 23, 0.6);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      padding: 20px;
+      min-height: 500px;
+    }
+
+    .kanban-column h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: #f1f5f9;
+      text-align: center;
+      padding-bottom: 12px;
+      border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .kanban-column.todo h3 {
+      border-bottom-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .kanban-column.in-progress h3 {
+      border-bottom-color: rgba(251, 191, 36, 0.5);
+    }
+
+    .kanban-column.done h3 {
+      border-bottom-color: rgba(16, 185, 129, 0.5);
+    }
+
+    .kanban-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .kanban-card {
+      background: linear-gradient(135deg, rgba(30, 64, 175, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .kanban-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.3);
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+
+    .kanban-card-title {
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .kanban-card-description {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .kanban-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .kanban-card-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .kanban-tag {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .priority-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .priority-high {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    .priority-medium {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fde68a;
+    }
+
+    .priority-low {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background: rgba(15, 23, 42, 0.95);
+      margin: 5% auto;
+      padding: 32px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .close {
+      color: #94a3b8;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .close:hover {
+      color: #3b82f6;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 1024px) {
+      .kanban-container {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="service.html?service=gcp">GCP</a>
+  <a href="service.html?service=aws">AWS</a>
+  <a href="service.html?service=hetzner">Hetzner</a>
+  <a href="service.html?service=jira">Jira</a>
+  <a href="service.html?service=bitbucket">Bitbucket</a>
+  <a href="add-billing.html">Add Billing</a>
+  <a href="instance.html">Instance</a>
+  <a href="checklist.html">Checklist</a>
+  <a href="kanban.html" class="active">Kanban</a>
+</nav>
+
+<div class="app-container">
+
+  <div class="sidebar">
+    <button onclick="history.back()">← Back</button>
+  </div>
+
+  <div class="main">
+
+    <h1>Task Planning & Kanban Board</h1>
+    <p style="color: #94a3b8; font-size: 16px; margin-bottom: 24px;">
+      Organize and track your tasks with a visual kanban board
+    </p>
+
+    <div style="margin-bottom: 24px;">
+      <button onclick="openAddModal()" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+        + Add New Task
+      </button>
+    </div>
+
+    <div class="kanban-container">
+      <div class="kanban-column todo">
+        <h3>To Do</h3>
+        <div class="kanban-cards" id="todoColumn"></div>
+      </div>
+
+      <div class="kanban-column in-progress">
+        <h3>In Progress</h3>
+        <div class="kanban-cards" id="inProgressColumn"></div>
+      </div>
+
+      <div class="kanban-column done">
+        <h3>Done</h3>
+        <div class="kanban-cards" id="doneColumn"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="taskModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <h2 id="modalTitle">Add New Task</h2>
+
+    <label>Title</label>
+    <input id="taskTitle" placeholder="Enter task title" required />
+
+    <label>Description</label>
+    <textarea id="taskDescription" placeholder="Enter task description (optional)" style="min-height: 100px; resize: vertical;"></textarea>
+
+    <div class="form-row">
+      <div>
+        <label>Status</label>
+        <select id="taskStatus">
+          <option value="todo">To Do</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Priority</label>
+        <select id="taskPriority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Assigned To</label>
+        <input id="taskAssignedTo" placeholder="Enter name (optional)" />
+      </div>
+
+      <div>
+        <label>Due Date</label>
+        <input id="taskDueDate" type="date" />
+      </div>
+    </div>
+
+    <label>Tags</label>
+    <input id="taskTags" placeholder="Enter tags separated by comma (optional)" />
+    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Example: frontend, urgent, bug-fix</div>
+
+    <div style="margin-top: 24px; display: flex; gap: 12px;">
+      <button id="saveTaskBtn" onclick="saveTask()">Save Task</button>
+      <button id="deleteTaskBtn" class="secondary" onclick="deleteTask()" style="display: none; background: linear-gradient(135deg, #ef4444, #dc2626);">Delete Task</button>
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/kanban.js"></script>
+</body>
+</html>
