@@ -571,9 +571,31 @@ const filterStartDate = () => document.getElementById("filterStartDate");
 const filterEndDate = () => document.getElementById("filterEndDate");
 
 function exportCSV() {
-  const filters = activeFilters || { service };
+  const filters = buildExportFilters();
   const params = new URLSearchParams(filters).toString();
   window.location.href = `/api/billing/export-csv?${params}`;
+}
+
+function exportExcel() {
+  const filters = buildExportFilters();
+  const params = new URLSearchParams(filters).toString();
+  window.location.href = `/api/billing/export-excel?${params}`;
+}
+
+function buildExportFilters() {
+  const filters = { service };
+
+  if (activeFilters) {
+    Object.assign(filters, activeFilters);
+  }
+
+  const startDateVal = filterStartDate().value.trim();
+  const endDateVal = filterEndDate().value.trim();
+
+  if (startDateVal) filters.startDate = startDateVal;
+  if (endDateVal) filters.endDate = endDateVal;
+
+  return filters;
 }
 
 document.getElementById("costChartTypeSelector").addEventListener("change", () => {
