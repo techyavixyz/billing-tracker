@@ -53,17 +53,33 @@
 
     <div class="chart-container">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="margin: 0;">Cost & Usage Trend</h3>
+        <h3 style="margin: 0;">Cost Trend</h3>
         <div>
           <label style="color: #cbd5e1; font-size: 14px; margin-right: 12px;">Chart Type:</label>
-          <select id="chartTypeSelector" style="padding: 8px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); color: #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 14px;">
+          <select id="costChartTypeSelector" style="padding: 8px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); color: #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 14px;">
+            <option value="line">Line Chart</option>
+            <option value="bar">Column Chart</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="costChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-container" style="margin-top: 32px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0;">Resource Usage Consumption</h3>
+        <div>
+          <label style="color: #cbd5e1; font-size: 14px; margin-right: 12px;">Chart Type:</label>
+          <select id="usageChartTypeSelector" style="padding: 8px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); color: #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 14px;">
             <option value="line">Line Chart</option>
             <option value="bar">Stacked Column Chart</option>
           </select>
         </div>
       </div>
       <div class="chart-wrapper">
-        <canvas id="trendChart"></canvas>
+        <canvas id="usageChart"></canvas>
       </div>
     </div>
 
@@ -71,7 +87,7 @@
       <h3>Filter & Analyze Trends</h3>
       <div class="filter-grid">
         <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">📊 View Mode</label>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">View Mode</label>
           <select id="filterMode">
             <option value="monthly">Monthly View</option>
             <option value="daily">Daily View</option>
@@ -80,26 +96,38 @@
         </div>
 
         <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">🏷️ Resource Type</label>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Resource Type</label>
           <input id="filterResource" placeholder="e.g., compute, storage" />
           <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Filter by resource</div>
         </div>
 
         <div>
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">🔖 SKU</label>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">SKU</label>
           <input id="filterSku" placeholder="e.g., n1-standard-1" />
           <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Filter by SKU</div>
         </div>
 
         <div id="dateFilterContainer">
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">📅 Date</label>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Date</label>
           <input id="filterDate" type="date" style="display:none" />
         </div>
 
         <div id="monthFilterContainer">
-          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">📆 Month</label>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Month</label>
           <input id="filterMonth" type="month" />
           <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Optional: specific period</div>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">Start Date</label>
+          <input id="filterStartDate" type="date" />
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Time range start</div>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px;">End Date</label>
+          <input id="filterEndDate" type="date" />
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Time range end</div>
         </div>
       </div>
 

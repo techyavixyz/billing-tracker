@@ -1,17 +1,34 @@
 const service = new URLSearchParams(location.search).get("service");
 document.getElementById("service").innerText = service.toUpperCase();
 
-let chart;
+let costChart;
+let usageChart;
 let activeFilters = null;
-let currentChartType = "line";
+let currentCostChartType = "line";
+let currentUsageChartType = "bar";
 let currentChartData = null;
+
+const RESOURCE_COLORS = [
+  { bg: "rgba(59, 130, 246, 0.8)", border: "#3b82f6" },
+  { bg: "rgba(16, 185, 129, 0.8)", border: "#10b981" },
+  { bg: "rgba(251, 191, 36, 0.8)", border: "#fbbf24" },
+  { bg: "rgba(239, 68, 68, 0.8)", border: "#ef4444" },
+  { bg: "rgba(168, 85, 247, 0.8)", border: "#a855f7" },
+  { bg: "rgba(236, 72, 153, 0.8)", border: "#ec4899" },
+  { bg: "rgba(14, 165, 233, 0.8)", border: "#0ea5e9" },
+  { bg: "rgba(34, 197, 94, 0.8)", border: "#22c55e" },
+  { bg: "rgba(249, 115, 22, 0.8)", border: "#f97316" },
+  { bg: "rgba(99, 102, 241, 0.8)", border: "#6366f1" }
+];
 
 async function loadOverview() {
   activeFilters = null;
 
   const data = await fetchBilling(service, "monthly");
-  document.getElementById("filterStatus").innerHTML = '<span style="color: #60a5fa;">📊 Monthly view • All data</span>';
-  updateSummaryAndChart(data, "period");
+  document.getElementById("filterStatus").innerHTML = '<span style="color: #60a5fa;">Monthly view - All data</span>';
+
+  const rows = await fetchRaw({ service, entryType: "monthly" });
+  updateSummaryAndCharts(rows, "monthly");
   loadTable({ service, entryType: "monthly" });
 }
 
@@ -20,18 +37,20 @@ async function applyFilters() {
 
   const resourceVal = filterResource().value.trim();
   const skuVal = filterSku().value.trim();
+  const startDateVal = filterStartDate().value.trim();
+  const endDateVal = filterEndDate().value.trim();
 
   if (resourceVal) filters.resourceType = resourceVal;
   if (skuVal) filters.sku = skuVal;
 
   const mode = document.getElementById("filterMode").value;
+  filters.entryType = mode;
+
   if (mode === "daily") {
-    filters.entryType = "daily";
     if (filterDate().value) {
       filters.date = filterDate().value;
     }
   } else {
-    filters.entryType = "monthly";
     if (filterMonth().value) {
       filters.month = filterMonth().value;
     }
@@ -39,28 +58,43 @@ async function applyFilters() {
 
   activeFilters = filters;
 
-  const rows = await fetchRaw(filters);
+  let rows = await fetchRaw(filters);
+
+  if (startDateVal || endDateVal) {
+    rows = rows.filter(r => {
+      const rowDate = new Date(r.date);
+      if (startDateVal && rowDate < new Date(startDateVal)) return false;
+      if (endDateVal) {
+        const endDate = new Date(endDateVal);
+        endDate.setHours(23, 59, 59, 999);
+        if (rowDate > endDate) return false;
+      }
+      return true;
+    });
+  }
 
   if (rows.length === 0) {
-    document.getElementById("filterStatus").innerHTML = `<span style="color: #f97316;">⚠️ No data found for selected filters</span>`;
-    const emptyData = [];
-    updateSummaryAndChart(emptyData, "period");
+    document.getElementById("filterStatus").innerHTML = `<span style="color: #f97316;">No data found for selected filters</span>`;
+    updateSummaryAndCharts([], mode);
     renderTable([]);
     return;
   }
 
-  const aggregated = aggregateRows(rows, mode);
+  let statusMsg = `Chart showing <strong>${mode}</strong> view`;
+  const filterParts = [];
+  if (resourceVal) filterParts.push(`Resource: ${resourceVal}`);
+  if (skuVal) filterParts.push(`SKU: ${skuVal}`);
+  if (startDateVal) filterParts.push(`From: ${startDateVal}`);
+  if (endDateVal) filterParts.push(`To: ${endDateVal}`);
 
-  let statusMsg = `📈 Chart showing <strong>${mode}</strong> view`;
-  const filterCount = [resourceVal, skuVal].filter(v => v).length;
-  if (filterCount > 0) {
-    statusMsg += ` • Filtered by: ${[resourceVal && `Resource: ${resourceVal}`, skuVal && `SKU: ${skuVal}`].filter(Boolean).join(", ")}`;
+  if (filterParts.length > 0) {
+    statusMsg += ` - Filtered by: ${filterParts.join(", ")}`;
   }
-  statusMsg += ` • Records: ${rows.length}`;
+  statusMsg += ` - Records: ${rows.length}`;
 
   document.getElementById("filterStatus").innerHTML = `<span style="color: #10b981;">${statusMsg}</span>`;
 
-  updateSummaryAndChart(aggregated, "period");
+  updateSummaryAndCharts(rows, mode);
   renderTable(rows);
 }
 
@@ -69,6 +103,8 @@ function clearFilters() {
   filterResource().value = "";
   filterDate().value = "";
   filterMonth().value = "";
+  filterStartDate().value = "";
+  filterEndDate().value = "";
   document.getElementById("filterMode").value = "monthly";
 
   filterDate().style.display = "none";
@@ -79,87 +115,104 @@ function clearFilters() {
   loadOverview();
 }
 
-function aggregateRows(rows, mode) {
-  const map = {};
-
-  rows.forEach(r => {
-    const key =
-      mode === "daily"
-        ? new Date(r.date).toISOString().slice(0, 10)
-        : new Date(r.date).toISOString().slice(0, 7);
-
-    if (!map[key]) {
-      map[key] = { period: key, usage: 0, price: 0, discountedPrice: 0 };
-    }
-
-    map[key].usage += r.usage;
-    map[key].price += r.price;
-    map[key].discountedPrice += r.discountedPrice;
-  });
-
-  return Object.values(map).sort((a, b) =>
-    a.period.localeCompare(b.period)
-  );
-}
-
-function updateSummaryAndChart(data, labelKey) {
+function updateSummaryAndCharts(rows, mode) {
   let usage = 0, price = 0, discount = 0;
 
-  data.forEach(d => {
-    usage += d.usage;
-    price += d.price;
-    discount += d.discountedPrice;
+  rows.forEach(r => {
+    usage += r.usage;
+    price += r.price;
+    discount += r.discountedPrice;
   });
 
   usageEl().innerText = usage.toFixed(2);
   priceEl().innerText = price.toFixed(2);
   discountEl().innerText = discount.toFixed(2);
 
-  const labels = data.map(d => d[labelKey]);
-  const prices = data.map(d => d.price);
-  const discountedPrices = data.map(d => d.discountedPrice);
-  const usageData = data.map(d => d.usage);
+  const costData = aggregateCostData(rows, mode);
+  const usageData = aggregateUsageByResource(rows, mode);
 
-  currentChartData = { labels, prices, discountedPrices, usageData };
+  currentChartData = { costData, usageData, mode };
 
-  const mode = document.getElementById("filterMode").value;
-  drawChart(labels, prices, discountedPrices, usageData, mode, currentChartType);
+  drawCostChart(costData, mode, currentCostChartType);
+  drawUsageChart(usageData, mode, currentUsageChartType);
 }
 
-function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly", chartType = "line") {
-  const ctx = document.getElementById("trendChart");
+function aggregateCostData(rows, mode) {
+  const map = {};
 
-  if (chart) chart.destroy();
+  rows.forEach(r => {
+    const key = mode === "daily"
+      ? new Date(r.date).toISOString().slice(0, 10)
+      : new Date(r.date).toISOString().slice(0, 7);
+
+    if (!map[key]) {
+      map[key] = { period: key, price: 0, discountedPrice: 0 };
+    }
+
+    map[key].price += r.price;
+    map[key].discountedPrice += r.discountedPrice;
+  });
+
+  return Object.values(map).sort((a, b) => a.period.localeCompare(b.period));
+}
+
+function aggregateUsageByResource(rows, mode) {
+  const map = {};
+  const resources = new Set();
+
+  rows.forEach(r => {
+    resources.add(r.resourceType);
+
+    const key = mode === "daily"
+      ? new Date(r.date).toISOString().slice(0, 10)
+      : new Date(r.date).toISOString().slice(0, 7);
+
+    if (!map[key]) {
+      map[key] = { period: key };
+    }
+
+    if (!map[key][r.resourceType]) {
+      map[key][r.resourceType] = 0;
+    }
+
+    map[key][r.resourceType] += r.usage;
+  });
+
+  const periods = Object.values(map).sort((a, b) => a.period.localeCompare(b.period));
+
+  return {
+    periods,
+    resources: Array.from(resources).sort()
+  };
+}
+
+function drawCostChart(data, mode = "monthly", chartType = "line") {
+  const ctx = document.getElementById("costChart");
+
+  if (costChart) costChart.destroy();
 
   const timeframeText = mode === "daily" ? "Daily" : "Monthly";
+  const labels = data.map(d => d.period);
+  const prices = data.map(d => d.price);
+  const discountedPrices = data.map(d => d.discountedPrice);
 
   let datasets, options;
 
   if (chartType === "bar") {
     datasets = [
       {
-        label: "Original Price (₹)",
+        label: "Original Price",
         data: prices,
         backgroundColor: "rgba(239, 68, 68, 0.8)",
         borderColor: "#ef4444",
-        borderWidth: 1,
-        yAxisID: 'y'
+        borderWidth: 1
       },
       {
-        label: "Discounted Price (₹)",
+        label: "Discounted Price",
         data: discountedPrices,
         backgroundColor: "rgba(59, 130, 246, 0.8)",
         borderColor: "#3b82f6",
-        borderWidth: 1,
-        yAxisID: 'y'
-      },
-      {
-        label: "Usage",
-        data: usageData,
-        backgroundColor: "rgba(16, 185, 129, 0.8)",
-        borderColor: "#10b981",
-        borderWidth: 1,
-        yAxisID: 'y1'
+        borderWidth: 1
       }
     ];
 
@@ -173,26 +226,17 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
       plugins: {
         title: {
           display: true,
-          text: `${timeframeText} Cost & Usage Trend - Stacked Column Chart`,
+          text: `${timeframeText} Cost Trend`,
           color: '#f1f5f9',
-          font: {
-            size: 14,
-            weight: '600'
-          },
-          padding: {
-            top: 10,
-            bottom: 20
-          }
+          font: { size: 14, weight: '600' },
+          padding: { top: 10, bottom: 20 }
         },
         legend: {
           display: true,
           position: 'top',
           labels: {
             color: '#cbd5e1',
-            font: {
-              size: 12,
-              weight: '500'
-            },
+            font: { size: 12, weight: '500' },
             padding: 15,
             usePointStyle: true,
             pointStyle: 'circle'
@@ -208,85 +252,30 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
           displayColors: true,
           callbacks: {
             label: function(context) {
-              let label = context.dataset.label || '';
-              if (label) {
-                label += ': ';
-              }
-              if (context.parsed.y !== null) {
-                if (label.includes('Price')) {
-                  label += '₹' + context.parsed.y.toFixed(2);
-                } else {
-                  label += context.parsed.y.toFixed(2);
-                }
-              }
-              return label;
+              return context.dataset.label + ': ₹' + context.parsed.y.toFixed(2);
             }
           }
         }
       },
       scales: {
         x: {
-          stacked: true,
-          grid: {
-            color: 'rgba(59, 130, 246, 0.1)',
-            drawBorder: false
-          },
-          ticks: {
-            color: '#94a3b8',
-            font: {
-              size: 11
-            }
-          }
+          grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
+          ticks: { color: '#94a3b8', font: { size: 11 } }
         },
         y: {
-          stacked: false,
-          type: 'linear',
-          display: true,
-          position: 'left',
-          grid: {
-            color: 'rgba(59, 130, 246, 0.1)',
-            drawBorder: false
-          },
+          grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
           ticks: {
             color: '#94a3b8',
-            font: {
-              size: 11
-            },
+            font: { size: 11 },
             callback: function(value) {
               return '₹' + value.toFixed(0);
             }
           },
           title: {
             display: true,
-            text: 'Price (₹)',
+            text: 'Price',
             color: '#cbd5e1',
-            font: {
-              size: 12,
-              weight: '600'
-            }
-          }
-        },
-        y1: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          grid: {
-            drawOnChartArea: false,
-          },
-          ticks: {
-            color: '#94a3b8',
-            font: {
-              size: 11
-            }
-          },
-          title: {
-            display: true,
-            text: 'Usage',
-            color: '#cbd5e1',
-            font: {
-              size: 12,
-              weight: '600'
-            }
+            font: { size: 12, weight: '600' }
           }
         }
       }
@@ -294,7 +283,7 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
   } else {
     datasets = [
       {
-        label: "Original Price (₹)",
+        label: "Original Price",
         data: prices,
         borderColor: "#ef4444",
         backgroundColor: "rgba(239, 68, 68, 0.1)",
@@ -308,7 +297,7 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
         pointBorderWidth: 2
       },
       {
-        label: "Discounted Price (₹)",
+        label: "Discounted Price",
         data: discountedPrices,
         borderColor: "#3b82f6",
         backgroundColor: "rgba(59, 130, 246, 0.1)",
@@ -320,21 +309,6 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
         pointBackgroundColor: "#3b82f6",
         pointBorderColor: "#fff",
         pointBorderWidth: 2
-      },
-      {
-        label: "Usage",
-        data: usageData,
-        borderColor: "#10b981",
-        backgroundColor: "rgba(16, 185, 129, 0.1)",
-        tension: 0.4,
-        fill: true,
-        borderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        pointBackgroundColor: "#10b981",
-        pointBorderColor: "#fff",
-        pointBorderWidth: 2,
-        yAxisID: 'y1'
       }
     ];
 
@@ -348,26 +322,17 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
       plugins: {
         title: {
           display: true,
-          text: `${timeframeText} Cost & Usage Trend - Line Chart`,
+          text: `${timeframeText} Cost Trend`,
           color: '#f1f5f9',
-          font: {
-            size: 14,
-            weight: '600'
-          },
-          padding: {
-            top: 10,
-            bottom: 20
-          }
+          font: { size: 14, weight: '600' },
+          padding: { top: 10, bottom: 20 }
         },
         legend: {
           display: true,
           position: 'top',
           labels: {
             color: '#cbd5e1',
-            font: {
-              size: 12,
-              weight: '500'
-            },
+            font: { size: 12, weight: '500' },
             padding: 15,
             usePointStyle: true,
             pointStyle: 'circle'
@@ -383,95 +348,138 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
           displayColors: true,
           callbacks: {
             label: function(context) {
-              let label = context.dataset.label || '';
-              if (label) {
-                label += ': ';
-              }
-              if (context.parsed.y !== null) {
-                if (label.includes('Price')) {
-                  label += '₹' + context.parsed.y.toFixed(2);
-                } else {
-                  label += context.parsed.y.toFixed(2);
-                }
-              }
-              return label;
+              return context.dataset.label + ': ₹' + context.parsed.y.toFixed(2);
             }
           }
         }
       },
       scales: {
         x: {
-          grid: {
-            color: 'rgba(59, 130, 246, 0.1)',
-            drawBorder: false
-          },
-          ticks: {
-            color: '#94a3b8',
-            font: {
-              size: 11
-            }
-          }
+          grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
+          ticks: { color: '#94a3b8', font: { size: 11 } }
         },
         y: {
-          type: 'linear',
-          display: true,
-          position: 'left',
-          grid: {
-            color: 'rgba(59, 130, 246, 0.1)',
-            drawBorder: false
-          },
+          grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
           ticks: {
             color: '#94a3b8',
-            font: {
-              size: 11
-            },
+            font: { size: 11 },
             callback: function(value) {
               return '₹' + value.toFixed(0);
             }
           },
           title: {
             display: true,
-            text: 'Price (₹)',
+            text: 'Price',
             color: '#cbd5e1',
-            font: {
-              size: 12,
-              weight: '600'
-            }
-          }
-        },
-        y1: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          grid: {
-            drawOnChartArea: false,
-          },
-          ticks: {
-            color: '#94a3b8',
-            font: {
-              size: 11
-            }
-          },
-          title: {
-            display: true,
-            text: 'Usage',
-            color: '#cbd5e1',
-            font: {
-              size: 12,
-              weight: '600'
-            }
+            font: { size: 12, weight: '600' }
           }
         }
       }
     };
   }
 
-  chart = new Chart(ctx, {
+  costChart = new Chart(ctx, {
     type: chartType === "bar" ? "bar" : "line",
-    data: {
-      labels,
-      datasets
+    data: { labels, datasets },
+    options
+  });
+}
+
+function drawUsageChart(data, mode = "monthly", chartType = "bar") {
+  const ctx = document.getElementById("usageChart");
+
+  if (usageChart) usageChart.destroy();
+
+  const timeframeText = mode === "daily" ? "Daily" : "Monthly";
+  const labels = data.periods.map(d => d.period);
+
+  const datasets = data.resources.map((resource, index) => {
+    const colorIndex = index % RESOURCE_COLORS.length;
+    const color = RESOURCE_COLORS[colorIndex];
+
+    return {
+      label: resource,
+      data: data.periods.map(p => p[resource] || 0),
+      backgroundColor: color.bg,
+      borderColor: color.border,
+      borderWidth: chartType === "bar" ? 1 : 2,
+      tension: 0.4,
+      fill: chartType === "line",
+      pointRadius: chartType === "line" ? 4 : 0,
+      pointHoverRadius: chartType === "line" ? 6 : 0,
+      pointBackgroundColor: color.border,
+      pointBorderColor: "#fff",
+      pointBorderWidth: 2
+    };
+  });
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
     },
+    plugins: {
+      title: {
+        display: true,
+        text: `${timeframeText} Resource Usage Consumption`,
+        color: '#f1f5f9',
+        font: { size: 14, weight: '600' },
+        padding: { top: 10, bottom: 20 }
+      },
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          color: '#cbd5e1',
+          font: { size: 12, weight: '500' },
+          padding: 15,
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(2, 6, 23, 0.95)',
+        titleColor: '#f1f5f9',
+        bodyColor: '#cbd5e1',
+        borderColor: 'rgba(59, 130, 246, 0.5)',
+        borderWidth: 1,
+        padding: 12,
+        displayColors: true,
+        callbacks: {
+          label: function(context) {
+            return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: chartType === "bar",
+        grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
+        ticks: { color: '#94a3b8', font: { size: 11 } }
+      },
+      y: {
+        stacked: chartType === "bar",
+        grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
+        ticks: {
+          color: '#94a3b8',
+          font: { size: 11 }
+        },
+        title: {
+          display: true,
+          text: 'Usage',
+          color: '#cbd5e1',
+          font: { size: 12, weight: '600' }
+        }
+      }
+    }
+  };
+
+  usageChart = new Chart(ctx, {
+    type: chartType === "bar" ? "bar" : "line",
+    data: { labels, datasets },
     options
   });
 }
@@ -501,8 +509,7 @@ function renderTable(rows) {
     let discountPercent = 0;
 
     if (r.price > 0) {
-      discountPercent =
-        ((r.price - r.discountedPrice) / r.price) * 100;
+      discountPercent = ((r.price - r.discountedPrice) / r.price) * 100;
     }
 
     const dateObj = new Date(r.date);
@@ -549,7 +556,7 @@ document.getElementById("filterMode").addEventListener("change", () => {
     filterMonth().value = "";
   }
 
-  document.getElementById("filterStatus").innerHTML = `<span style="color: #60a5fa;">📊 Changed to ${mode === "daily" ? "Daily" : "Monthly"} view • Chart time frame updated</span>`;
+  document.getElementById("filterStatus").innerHTML = `<span style="color: #60a5fa;">Changed to ${mode === "daily" ? "Daily" : "Monthly"} view - Chart time frame updated</span>`;
 });
 
 const usageEl = () => document.getElementById("usage");
@@ -560,6 +567,8 @@ const filterSku = () => document.getElementById("filterSku");
 const filterResource = () => document.getElementById("filterResource");
 const filterDate = () => document.getElementById("filterDate");
 const filterMonth = () => document.getElementById("filterMonth");
+const filterStartDate = () => document.getElementById("filterStartDate");
+const filterEndDate = () => document.getElementById("filterEndDate");
 
 function exportCSV() {
   const filters = activeFilters || { service };
@@ -567,18 +576,17 @@ function exportCSV() {
   window.location.href = `/api/billing/export-csv?${params}`;
 }
 
-document.getElementById("chartTypeSelector").addEventListener("change", () => {
-  currentChartType = document.getElementById("chartTypeSelector").value;
+document.getElementById("costChartTypeSelector").addEventListener("change", () => {
+  currentCostChartType = document.getElementById("costChartTypeSelector").value;
   if (currentChartData) {
-    const mode = document.getElementById("filterMode").value;
-    drawChart(
-      currentChartData.labels,
-      currentChartData.prices,
-      currentChartData.discountedPrices,
-      currentChartData.usageData,
-      mode,
-      currentChartType
-    );
+    drawCostChart(currentChartData.costData, currentChartData.mode, currentCostChartType);
+  }
+});
+
+document.getElementById("usageChartTypeSelector").addEventListener("change", () => {
+  currentUsageChartType = document.getElementById("usageChartTypeSelector").value;
+  if (currentChartData) {
+    drawUsageChart(currentChartData.usageData, currentChartData.mode, currentUsageChartType);
   }
 });
 
