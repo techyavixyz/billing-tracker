@@ -52,7 +52,16 @@
     </div>
 
     <div class="chart-container">
-      <h3 style="margin-top: 0;">Cost & Usage Trend</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0;">Cost & Usage Trend</h3>
+        <div>
+          <label style="color: #cbd5e1; font-size: 14px; margin-right: 12px;">Chart Type:</label>
+          <select id="chartTypeSelector" style="padding: 8px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); color: #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 14px;">
+            <option value="line">Line Chart</option>
+            <option value="bar">Stacked Column Chart</option>
+          </select>
+        </div>
+      </div>
       <div class="chart-wrapper">
         <canvas id="trendChart"></canvas>
       </div>

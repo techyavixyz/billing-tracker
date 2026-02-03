@@ -3,6 +3,8 @@ document.getElementById("service").innerText = service.toUpperCase();
 
 let chart;
 let activeFilters = null;
+let currentChartType = "line";
+let currentChartData = null;
 
 async function loadOverview() {
   activeFilters = null;
@@ -118,68 +120,50 @@ function updateSummaryAndChart(data, labelKey) {
   const discountedPrices = data.map(d => d.discountedPrice);
   const usageData = data.map(d => d.usage);
 
+  currentChartData = { labels, prices, discountedPrices, usageData };
+
   const mode = document.getElementById("filterMode").value;
-  drawChart(labels, prices, discountedPrices, usageData, mode);
+  drawChart(labels, prices, discountedPrices, usageData, mode, currentChartType);
 }
 
-function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly") {
+function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly", chartType = "line") {
   const ctx = document.getElementById("trendChart");
 
   if (chart) chart.destroy();
 
   const timeframeText = mode === "daily" ? "Daily" : "Monthly";
 
-  chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Original Price (₹)",
-          data: prices,
-          borderColor: "#ef4444",
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
-          tension: 0.4,
-          fill: true,
-          borderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: "#ef4444",
-          pointBorderColor: "#fff",
-          pointBorderWidth: 2
-        },
-        {
-          label: "Discounted Price (₹)",
-          data: discountedPrices,
-          borderColor: "#3b82f6",
-          backgroundColor: "rgba(59, 130, 246, 0.1)",
-          tension: 0.4,
-          fill: true,
-          borderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: "#3b82f6",
-          pointBorderColor: "#fff",
-          pointBorderWidth: 2
-        },
-        {
-          label: "Usage",
-          data: usageData,
-          borderColor: "#10b981",
-          backgroundColor: "rgba(16, 185, 129, 0.1)",
-          tension: 0.4,
-          fill: true,
-          borderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: "#10b981",
-          pointBorderColor: "#fff",
-          pointBorderWidth: 2,
-          yAxisID: 'y1'
-        }
-      ]
-    },
-    options: {
+  let datasets, options;
+
+  if (chartType === "bar") {
+    datasets = [
+      {
+        label: "Original Price (₹)",
+        data: prices,
+        backgroundColor: "rgba(239, 68, 68, 0.8)",
+        borderColor: "#ef4444",
+        borderWidth: 1,
+        yAxisID: 'y'
+      },
+      {
+        label: "Discounted Price (₹)",
+        data: discountedPrices,
+        backgroundColor: "rgba(59, 130, 246, 0.8)",
+        borderColor: "#3b82f6",
+        borderWidth: 1,
+        yAxisID: 'y'
+      },
+      {
+        label: "Usage",
+        data: usageData,
+        backgroundColor: "rgba(16, 185, 129, 0.8)",
+        borderColor: "#10b981",
+        borderWidth: 1,
+        yAxisID: 'y1'
+      }
+    ];
+
+    options = {
       responsive: true,
       maintainAspectRatio: false,
       interaction: {
@@ -189,7 +173,182 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
       plugins: {
         title: {
           display: true,
-          text: `${timeframeText} Cost & Usage Trend`,
+          text: `${timeframeText} Cost & Usage Trend - Stacked Column Chart`,
+          color: '#f1f5f9',
+          font: {
+            size: 14,
+            weight: '600'
+          },
+          padding: {
+            top: 10,
+            bottom: 20
+          }
+        },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#cbd5e1',
+            font: {
+              size: 12,
+              weight: '500'
+            },
+            padding: 15,
+            usePointStyle: true,
+            pointStyle: 'circle'
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(2, 6, 23, 0.95)',
+          titleColor: '#f1f5f9',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(59, 130, 246, 0.5)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          callbacks: {
+            label: function(context) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null) {
+                if (label.includes('Price')) {
+                  label += '₹' + context.parsed.y.toFixed(2);
+                } else {
+                  label += context.parsed.y.toFixed(2);
+                }
+              }
+              return label;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: {
+            color: 'rgba(59, 130, 246, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#94a3b8',
+            font: {
+              size: 11
+            }
+          }
+        },
+        y: {
+          stacked: false,
+          type: 'linear',
+          display: true,
+          position: 'left',
+          grid: {
+            color: 'rgba(59, 130, 246, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#94a3b8',
+            font: {
+              size: 11
+            },
+            callback: function(value) {
+              return '₹' + value.toFixed(0);
+            }
+          },
+          title: {
+            display: true,
+            text: 'Price (₹)',
+            color: '#cbd5e1',
+            font: {
+              size: 12,
+              weight: '600'
+            }
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          grid: {
+            drawOnChartArea: false,
+          },
+          ticks: {
+            color: '#94a3b8',
+            font: {
+              size: 11
+            }
+          },
+          title: {
+            display: true,
+            text: 'Usage',
+            color: '#cbd5e1',
+            font: {
+              size: 12,
+              weight: '600'
+            }
+          }
+        }
+      }
+    };
+  } else {
+    datasets = [
+      {
+        label: "Original Price (₹)",
+        data: prices,
+        borderColor: "#ef4444",
+        backgroundColor: "rgba(239, 68, 68, 0.1)",
+        tension: 0.4,
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: "#ef4444",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2
+      },
+      {
+        label: "Discounted Price (₹)",
+        data: discountedPrices,
+        borderColor: "#3b82f6",
+        backgroundColor: "rgba(59, 130, 246, 0.1)",
+        tension: 0.4,
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: "#3b82f6",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2
+      },
+      {
+        label: "Usage",
+        data: usageData,
+        borderColor: "#10b981",
+        backgroundColor: "rgba(16, 185, 129, 0.1)",
+        tension: 0.4,
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: "#10b981",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        yAxisID: 'y1'
+      }
+    ];
+
+    options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: `${timeframeText} Cost & Usage Trend - Line Chart`,
           color: '#f1f5f9',
           font: {
             size: 14,
@@ -304,7 +463,16 @@ function drawChart(labels, prices, discountedPrices, usageData, mode = "monthly"
           }
         }
       }
-    }
+    };
+  }
+
+  chart = new Chart(ctx, {
+    type: chartType === "bar" ? "bar" : "line",
+    data: {
+      labels,
+      datasets
+    },
+    options
   });
 }
 
@@ -398,5 +566,20 @@ function exportCSV() {
   const params = new URLSearchParams(filters).toString();
   window.location.href = `/api/billing/export-csv?${params}`;
 }
+
+document.getElementById("chartTypeSelector").addEventListener("change", () => {
+  currentChartType = document.getElementById("chartTypeSelector").value;
+  if (currentChartData) {
+    const mode = document.getElementById("filterMode").value;
+    drawChart(
+      currentChartData.labels,
+      currentChartData.prices,
+      currentChartData.discountedPrices,
+      currentChartData.usageData,
+      mode,
+      currentChartType
+    );
+  }
+});
 
 loadOverview();
