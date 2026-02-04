@@ -17,9 +17,14 @@ app.use("/api/instance", require("./routes/instance.routes"));
 app.use("/api/checklist", require("./routes/checklist.routes"));
 app.use("/api/todo", require("./routes/todo.routes"));
 
-//  Fallback to index.html
+//  Root path serves login page
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/login.html"));
+});
+
+//  Fallback to login.html for unknown routes
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/index.html"));
+  res.sendFile(path.join(__dirname, "../frontend/login.html"));
 });
 
 app.listen(4000, () =>
