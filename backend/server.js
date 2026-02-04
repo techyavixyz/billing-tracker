@@ -10,7 +10,9 @@ app.use(cors());
 app.use(express.json());
 
 //  Serve frontend
-app.use(express.static(path.join(__dirname, "../frontend")));
+app.use(express.static(path.join(__dirname, "../frontend"), {
+  index: false
+}));
 
 app.use("/api/billing", require("./routes/billing.routes"));
 app.use("/api/instance", require("./routes/instance.routes"));
