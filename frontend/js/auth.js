@@ -1,9 +1,3 @@
-// Supabase client initialization
-const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'http://localhost:54321';
-const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-
-const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 // Auth state management
 let currentUser = null;
 let userProfile = null;
@@ -11,91 +5,37 @@ let userPermissions = {
   services: {},
   kanban: { can_read: false, can_write: false }
 };
+let authToken = null;
 
 // Initialize auth
 async function initAuth() {
-  if (!supabase) {
-    console.error('Supabase client not initialized');
-    return;
-  }
+  authToken = localStorage.getItem('authToken');
 
-  const { data: { session } } = await supabase.auth.getSession();
+  if (authToken) {
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
 
-  if (session) {
-    currentUser = session.user;
-    await loadUserProfile();
-    await loadUserPermissions();
-  }
-
-  supabase.auth.onAuthStateChange((async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      currentUser = session.user;
-      await loadUserProfile();
-      await loadUserPermissions();
-      updateUIForAuthState();
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null;
-      userProfile = null;
-      userPermissions = {
-        services: {},
-        kanban: { can_read: false, can_write: false }
-      };
-      updateUIForAuthState();
+      if (response.ok) {
+        const data = await response.json();
+        userProfile = data.profile;
+        userPermissions = data.permissions;
+        currentUser = { id: data.profile.id, email: data.profile.email };
+      } else {
+        localStorage.removeItem('authToken');
+        authToken = null;
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      localStorage.removeItem('authToken');
+      authToken = null;
     }
-  }));
+  }
 
   return { user: currentUser, profile: userProfile, permissions: userPermissions };
-}
-
-// Load user profile
-async function loadUserProfile() {
-  if (!currentUser) return;
-
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', currentUser.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error loading user profile:', error);
-    return;
-  }
-
-  userProfile = data;
-}
-
-// Load user permissions
-async function loadUserPermissions() {
-  if (!currentUser) return;
-
-  const { data: servicePerms } = await supabase
-    .from('service_permissions')
-    .select('*')
-    .eq('user_id', currentUser.id);
-
-  const { data: kanbanPerms } = await supabase
-    .from('kanban_permissions')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .maybeSingle();
-
-  if (servicePerms) {
-    userPermissions.services = {};
-    servicePerms.forEach(perm => {
-      userPermissions.services[perm.service] = {
-        can_read: perm.can_read,
-        can_write: perm.can_write
-      };
-    });
-  }
-
-  if (kanbanPerms) {
-    userPermissions.kanban = {
-      can_read: kanbanPerms.can_read,
-      can_write: kanbanPerms.can_write
-    };
-  }
 }
 
 // Check if user is admin
@@ -124,44 +64,66 @@ function hasKanbanAccess(accessType = 'read') {
 
 // Sign in
 async function signIn(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
+  const response = await fetch('/api/auth/signin', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, password })
   });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to sign in');
   }
+
+  const data = await response.json();
+  authToken = data.token;
+  localStorage.setItem('authToken', authToken);
+
+  await initAuth();
 
   return data;
 }
 
 // Sign up
 async function signUp(email, password, fullName) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: fullName
-      }
-    }
+  const response = await fetch('/api/auth/signup', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      full_name: fullName
+    })
   });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create account');
   }
+
+  const data = await response.json();
+  authToken = data.token;
+  localStorage.setItem('authToken', authToken);
+
+  await initAuth();
 
   return data;
 }
 
 // Sign out
 async function signOut() {
-  const { error } = await supabase.auth.signOut();
-
-  if (error) {
-    throw error;
-  }
+  localStorage.removeItem('authToken');
+  authToken = null;
+  currentUser = null;
+  userProfile = null;
+  userPermissions = {
+    services: {},
+    kanban: { can_read: false, can_write: false }
+  };
 
   window.location.href = '/login.html';
 }
@@ -179,6 +141,11 @@ function getUserProfile() {
 // Get user permissions
 function getUserPermissions() {
   return userPermissions;
+}
+
+// Get auth token
+function getAuthToken() {
+  return authToken;
 }
 
 // Update UI based on auth state

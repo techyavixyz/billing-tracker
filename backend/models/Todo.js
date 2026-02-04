@@ -5,8 +5,11 @@ const TodoSchema = new mongoose.Schema({
   description: String,
   status: { type: String, enum: ['todo', 'in-progress', 'done'], default: 'todo' },
   priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
-  assignedTo: String,
-  dueDate: Date,
+  assigned_to_user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assigned_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assigned_at: Date,
+  created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  due_date: Date,
   tags: [String],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

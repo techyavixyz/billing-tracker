@@ -30,43 +30,50 @@ async function initializeKanban() {
 }
 
 async function loadUsers() {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('id, email, full_name')
-    .order('full_name');
+  try {
+    const response = await fetch('/api/auth/users', {
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`
+      }
+    });
 
-  if (error) {
+    if (response.ok) {
+      allUsers = await response.json();
+    } else {
+      console.error('Error loading users');
+      allUsers = [];
+    }
+
+    const select = document.getElementById('taskAssignedTo');
+    select.innerHTML = '<option value="">Not Assigned</option>';
+
+    allUsers.forEach(user => {
+      const option = document.createElement('option');
+      option.value = user._id;
+      option.textContent = user.full_name || user.email;
+      select.appendChild(option);
+    });
+  } catch (error) {
     console.error('Error loading users:', error);
-    return;
+    allUsers = [];
   }
-
-  allUsers = data || [];
-
-  const select = document.getElementById('taskAssignedTo');
-  select.innerHTML = '<option value="">Not Assigned</option>';
-
-  allUsers.forEach(user => {
-    const option = document.createElement('option');
-    option.value = user.id;
-    option.textContent = user.full_name || user.email;
-    select.appendChild(option);
-  });
 }
 
 async function loadTasks() {
   try {
-    const { data, error } = await supabase
-      .from('todos')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const response = await fetch('/api/todo', {
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`
+      }
+    });
 
-    if (error) {
-      console.error('Error loading tasks:', error);
+    if (!response.ok) {
+      console.error('Error loading tasks');
       alert('Failed to load tasks');
       return;
     }
 
-    const tasks = data || [];
+    const tasks = await response.json();
 
     const todoColumn = document.getElementById("todoColumn");
     const inProgressColumn = document.getElementById("inProgressColumn");
@@ -119,15 +126,13 @@ function createTaskCard(task) {
 
   let assignedToHTML = "";
   if (task.assigned_to_user) {
-    const assignedUser = allUsers.find(u => u.id === task.assigned_to_user);
-    const assignedName = assignedUser ? (assignedUser.full_name || assignedUser.email) : "Unknown User";
+    const assignedName = getUserName(task.assigned_to_user);
     assignedToHTML = `<div style="font-size: 12px; color: #94a3b8; margin-top: 8px;">Assigned to: ${assignedName}</div>`;
   }
 
   let assignedByHTML = "";
   if (task.assigned_by && task.assigned_at) {
-    const assignedByUser = allUsers.find(u => u.id === task.assigned_by);
-    const assignedByName = assignedByUser ? (assignedByUser.full_name || assignedByUser.email) : "Unknown User";
+    const assignedByName = getUserName(task.assigned_by);
     const assignedTime = new Date(task.assigned_at).toLocaleString();
     assignedByHTML = `<div style="font-size: 11px; color: #64748b; margin-top: 4px;">Assigned by ${assignedByName} on ${assignedTime}</div>`;
   }
@@ -136,7 +141,7 @@ function createTaskCard(task) {
     ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Due: ${new Date(task.due_date).toLocaleDateString()}</div>`
     : "";
 
-  const createdByHTML = task.created_by && task.created_by !== currentUserId
+  const createdByHTML = task.created_by && task.created_by._id !== currentUserId
     ? `<div style="font-size: 11px; color: #64748b; margin-top: 4px;">Created by ${getUserName(task.created_by)}</div>`
     : "";
 
@@ -158,8 +163,12 @@ function createTaskCard(task) {
   return card;
 }
 
-function getUserName(userId) {
-  const user = allUsers.find(u => u.id === userId);
+function getUserName(userOrId) {
+  if (typeof userOrId === 'object' && userOrId !== null) {
+    return userOrId.full_name || userOrId.email || 'Unknown User';
+  }
+
+  const user = allUsers.find(u => u._id === userOrId);
   return user ? (user.full_name || user.email) : "Unknown User";
 }
 
@@ -183,7 +192,7 @@ function openAddModal() {
 }
 
 function openEditModal(task) {
-  if (!hasKanbanAccess('write') && task.created_by !== currentUserId && task.assigned_by !== currentUserId) {
+  if (!hasKanbanAccess('write') && task.created_by._id !== currentUserId && (!task.assigned_by || task.assigned_by._id !== currentUserId)) {
     alert('You do not have permission to edit this task');
     return;
   }
@@ -194,7 +203,7 @@ function openEditModal(task) {
   document.getElementById("taskDescription").value = task.description || "";
   document.getElementById("taskStatus").value = task.status;
   document.getElementById("taskPriority").value = task.priority;
-  document.getElementById("taskAssignedTo").value = task.assigned_to_user || "";
+  document.getElementById("taskAssignedTo").value = task.assigned_to_user ? (task.assigned_to_user._id || task.assigned_to_user) : "";
   document.getElementById("taskDueDate").value = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : "";
   document.getElementById("taskTags").value = task.tags ? task.tags.join(", ") : "";
   document.getElementById("deleteTaskBtn").style.display = "inline-block";
@@ -231,48 +240,38 @@ async function saveTask() {
     description,
     status,
     priority,
+    assigned_to_user: assignedToUser,
     due_date: dueDate,
     tags
   };
 
   try {
+    let response;
+
     if (currentEditingTask) {
-      const updates = { ...taskData };
-
-      if (assignedToUser !== (currentEditingTask.assigned_to_user || '')) {
-        updates.assigned_to_user = assignedToUser;
-        updates.assigned_by = currentUserId;
-        updates.assigned_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from('todos')
-        .update(updates)
-        .eq('id', currentEditingTask.id);
-
-      if (error) {
-        console.error('Error updating task:', error);
-        alert("Failed to update task: " + error.message);
-        return;
-      }
+      response = await fetch(`/api/todo/${currentEditingTask._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(taskData)
+      });
     } else {
-      taskData.created_by = currentUserId;
+      response = await fetch('/api/todo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(taskData)
+      });
+    }
 
-      if (assignedToUser) {
-        taskData.assigned_to_user = assignedToUser;
-        taskData.assigned_by = currentUserId;
-        taskData.assigned_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from('todos')
-        .insert([taskData]);
-
-      if (error) {
-        console.error('Error creating task:', error);
-        alert("Failed to create task: " + error.message);
-        return;
-      }
+    if (!response.ok) {
+      const error = await response.json();
+      alert("Failed to save task: " + error.error);
+      return;
     }
 
     closeModal();
@@ -286,7 +285,7 @@ async function saveTask() {
 async function deleteTask() {
   if (!currentEditingTask) return;
 
-  if (!hasKanbanAccess('write') && currentEditingTask.created_by !== currentUserId) {
+  if (!hasKanbanAccess('write') && currentEditingTask.created_by._id !== currentUserId) {
     alert('You do not have permission to delete this task');
     return;
   }
@@ -296,14 +295,16 @@ async function deleteTask() {
   }
 
   try {
-    const { error } = await supabase
-      .from('todos')
-      .delete()
-      .eq('id', currentEditingTask.id);
+    const response = await fetch(`/api/todo/${currentEditingTask._id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`
+      }
+    });
 
-    if (error) {
-      console.error('Error deleting task:', error);
-      alert("Failed to delete task: " + error.message);
+    if (!response.ok) {
+      const error = await response.json();
+      alert("Failed to delete task: " + error.error);
       return;
     }
 

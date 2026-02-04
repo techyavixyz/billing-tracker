@@ -20,43 +20,19 @@ async function initializeAdmin() {
 
 async function loadAllUsers() {
   try {
-    const { data: users, error: usersError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const response = await fetch('/api/auth/users', {
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`
+      }
+    });
 
-    if (usersError) {
-      console.error('Error loading users:', usersError);
+    if (!response.ok) {
+      console.error('Error loading users');
       alert('Failed to load users');
       return;
     }
 
-    const { data: servicePerms, error: servicePermsError } = await supabase
-      .from('service_permissions')
-      .select('*');
-
-    const { data: kanbanPerms, error: kanbanPermsError } = await supabase
-      .from('kanban_permissions')
-      .select('*');
-
-    allUsersData = users.map(user => {
-      const userServicePerms = servicePerms?.filter(p => p.user_id === user.id) || [];
-      const userKanbanPerms = kanbanPerms?.find(p => p.user_id === user.id);
-
-      const services = {};
-      userServicePerms.forEach(perm => {
-        services[perm.service] = {
-          can_read: perm.can_read,
-          can_write: perm.can_write
-        };
-      });
-
-      return {
-        ...user,
-        services,
-        kanban: userKanbanPerms || { can_read: false, can_write: false }
-      };
-    });
+    allUsersData = await response.json();
 
     renderUsersTable();
   } catch (error) {
@@ -84,7 +60,7 @@ function renderUsersTable() {
     const roleColor = user.role === 'admin' ? '#ef4444' : user.role === 'manager' ? '#f59e0b' : '#3b82f6';
 
     const getPermIcon = (service) => {
-      const perm = user.services[service];
+      const perm = user.service_permissions.find(p => p.service === service);
       if (!perm) return '<span style="color: #64748b;">-</span>';
       if (perm.can_read && perm.can_write) return '<span style="color: #10b981;">RW</span>';
       if (perm.can_read) return '<span style="color: #3b82f6;">R</span>';
@@ -93,9 +69,10 @@ function renderUsersTable() {
     };
 
     const getKanbanIcon = () => {
-      if (user.kanban.can_read && user.kanban.can_write) return '<span style="color: #10b981;">RW</span>';
-      if (user.kanban.can_read) return '<span style="color: #3b82f6;">R</span>';
-      if (user.kanban.can_write) return '<span style="color: #f59e0b;">W</span>';
+      const perm = user.kanban_permissions;
+      if (perm.can_read && perm.can_write) return '<span style="color: #10b981;">RW</span>';
+      if (perm.can_read) return '<span style="color: #3b82f6;">R</span>';
+      if (perm.can_write) return '<span style="color: #f59e0b;">W</span>';
       return '<span style="color: #64748b;">-</span>';
     };
 
@@ -111,7 +88,7 @@ function renderUsersTable() {
         <td style="text-align: center;">${getPermIcon('bitbucket')}</td>
         <td style="text-align: center;">${getKanbanIcon()}</td>
         <td>
-          <button onclick="openPermissionModal('${user.id}')" style="padding: 6px 12px; font-size: 12px;">
+          <button onclick="openPermissionModal('${user._id}')" style="padding: 6px 12px; font-size: 12px;">
             Edit
           </button>
         </td>
@@ -122,7 +99,7 @@ function renderUsersTable() {
 
 function openPermissionModal(userId) {
   currentEditingUserId = userId;
-  const user = allUsersData.find(u => u.id === userId);
+  const user = allUsersData.find(u => u._id === userId);
 
   if (!user) {
     alert('User not found');
@@ -133,13 +110,13 @@ function openPermissionModal(userId) {
   document.getElementById('userRole').value = user.role;
 
   ['gcp', 'aws', 'hetzner', 'jira', 'bitbucket'].forEach(service => {
-    const perm = user.services[service] || { can_read: false, can_write: false };
-    document.getElementById(`${service}_read`).checked = perm.can_read;
-    document.getElementById(`${service}_write`).checked = perm.can_write;
+    const perm = user.service_permissions.find(p => p.service === service);
+    document.getElementById(`${service}_read`).checked = perm ? perm.can_read : false;
+    document.getElementById(`${service}_write`).checked = perm ? perm.can_write : false;
   });
 
-  document.getElementById('kanban_read').checked = user.kanban.can_read;
-  document.getElementById('kanban_write').checked = user.kanban.can_write;
+  document.getElementById('kanban_read').checked = user.kanban_permissions.can_read;
+  document.getElementById('kanban_write').checked = user.kanban_permissions.can_write;
 
   document.getElementById('permissionModal').style.display = 'block';
 }
@@ -154,78 +131,34 @@ async function savePermissions() {
 
   const role = document.getElementById('userRole').value;
 
-  const servicePermissions = {
-    gcp: {
-      can_read: document.getElementById('gcp_read').checked,
-      can_write: document.getElementById('gcp_write').checked
-    },
-    aws: {
-      can_read: document.getElementById('aws_read').checked,
-      can_write: document.getElementById('aws_write').checked
-    },
-    hetzner: {
-      can_read: document.getElementById('hetzner_read').checked,
-      can_write: document.getElementById('hetzner_write').checked
-    },
-    jira: {
-      can_read: document.getElementById('jira_read').checked,
-      can_write: document.getElementById('jira_write').checked
-    },
-    bitbucket: {
-      can_read: document.getElementById('bitbucket_read').checked,
-      can_write: document.getElementById('bitbucket_write').checked
-    }
-  };
+  const service_permissions = ['gcp', 'aws', 'hetzner', 'jira', 'bitbucket'].map(service => ({
+    service,
+    can_read: document.getElementById(`${service}_read`).checked,
+    can_write: document.getElementById(`${service}_write`).checked
+  }));
 
-  const kanbanPermissions = {
+  const kanban_permissions = {
     can_read: document.getElementById('kanban_read').checked,
     can_write: document.getElementById('kanban_write').checked
   };
 
   try {
-    const { error: roleError } = await supabase
-      .from('user_profiles')
-      .update({ role })
-      .eq('id', currentEditingUserId);
+    const response = await fetch(`/api/auth/users/${currentEditingUserId}/permissions`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        role,
+        service_permissions,
+        kanban_permissions
+      })
+    });
 
-    if (roleError) {
-      console.error('Error updating role:', roleError);
-      alert('Failed to update role');
-      return;
-    }
-
-    for (const [service, perms] of Object.entries(servicePermissions)) {
-      const { error: upsertError } = await supabase
-        .from('service_permissions')
-        .upsert({
-          user_id: currentEditingUserId,
-          service: service,
-          can_read: perms.can_read,
-          can_write: perms.can_write
-        }, {
-          onConflict: 'user_id,service'
-        });
-
-      if (upsertError) {
-        console.error(`Error updating ${service} permissions:`, upsertError);
-        alert(`Failed to update ${service} permissions`);
-        return;
-      }
-    }
-
-    const { error: kanbanError } = await supabase
-      .from('kanban_permissions')
-      .upsert({
-        user_id: currentEditingUserId,
-        can_read: kanbanPermissions.can_read,
-        can_write: kanbanPermissions.can_write
-      }, {
-        onConflict: 'user_id'
-      });
-
-    if (kanbanError) {
-      console.error('Error updating kanban permissions:', kanbanError);
-      alert('Failed to update kanban permissions');
+    if (!response.ok) {
+      const error = await response.json();
+      alert('Failed to update permissions: ' + error.error);
       return;
     }
 
