@@ -9,20 +9,16 @@
 <body>
 
 <nav>
-  <div style="display: flex; flex: 1; align-items: center;">
-    <a href="index.html" class="active">Dashboard</a>
-    <a href="service.html?service=gcp" id="navGcp">GCP</a>
-    <a href="service.html?service=aws" id="navAws">AWS</a>
-    <a href="service.html?service=hetzner" id="navHetzner">Hetzner</a>
-    <a href="service.html?service=jira" id="navJira">Jira</a>
-    <a href="service.html?service=bitbucket" id="navBitbucket">Bitbucket</a>
-    <a href="add-billing.html">Add Billing</a>
-    <a href="instance.html">Instance</a>
-    <a href="checklist.html">Checklist</a>
-    <a href="kanban.html" id="navKanban">Kanban</a>
-    <a href="admin.html" id="navAdmin" style="display: none;">Admin</a>
-  </div>
-  <div id="userInfo" style="margin-left: auto;"></div>
+  <a href="index.html" class="active">Dashboard</a>
+  <a href="service.html?service=gcp">GCP</a>
+  <a href="service.html?service=aws">AWS</a>
+  <a href="service.html?service=hetzner">Hetzner</a>
+  <a href="service.html?service=jira">Jira</a>
+  <a href="service.html?service=bitbucket">Bitbucket</a>
+  <a href="add-billing.html">Add Billing</a>
+  <a href="instance.html">Instance</a>
+  <a href="checklist.html">Checklist</a>
+  <a href="kanban.html">Kanban</a>
 </nav>
 
 <div class="app-container">
@@ -83,25 +79,6 @@
   </div>
 </div>
 
-<script src="js/auth.js"></script>
-<script>
-(async () => {
-  await requireAuth();
-
-  const permissions = getUserPermissions();
-  const profile = getUserProfile();
-
-  document.getElementById('navGcp').style.display = hasServiceAccess('gcp', 'read') ? 'block' : 'none';
-  document.getElementById('navAws').style.display = hasServiceAccess('aws', 'read') ? 'block' : 'none';
-  document.getElementById('navHetzner').style.display = hasServiceAccess('hetzner', 'read') ? 'block' : 'none';
-  document.getElementById('navJira').style.display = hasServiceAccess('jira', 'read') ? 'block' : 'none';
-  document.getElementById('navBitbucket').style.display = hasServiceAccess('bitbucket', 'read') ? 'block' : 'none';
-  document.getElementById('navKanban').style.display = hasKanbanAccess('read') ? 'block' : 'none';
-  document.getElementById('navAdmin').style.display = isAdmin() ? 'block' : 'none';
-
-  updateUIForAuthState();
-})();
-</script>
 
 </body>
 </html>

@@ -1,71 +1,12 @@
 let currentEditingTask = null;
-let allUsers = [];
-let currentUserId = null;
 
 async function initializeKanban() {
-  const auth = await requireAuth();
-
-  if (!auth || !auth.user) {
-    return;
-  }
-
-  if (!hasKanbanAccess('read')) {
-    alert('You do not have permission to access the kanban board');
-    window.location.href = '/index.html';
-    return;
-  }
-
-  currentUserId = auth.user.id;
-
-  document.getElementById('navGcp').style.display = hasServiceAccess('gcp', 'read') ? 'block' : 'none';
-  document.getElementById('navAws').style.display = hasServiceAccess('aws', 'read') ? 'block' : 'none';
-  document.getElementById('navHetzner').style.display = hasServiceAccess('hetzner', 'read') ? 'block' : 'none';
-  document.getElementById('navJira').style.display = hasServiceAccess('jira', 'read') ? 'block' : 'none';
-  document.getElementById('navBitbucket').style.display = hasServiceAccess('bitbucket', 'read') ? 'block' : 'none';
-
-  updateUIForAuthState();
-
-  await loadUsers();
   await loadTasks();
-}
-
-async function loadUsers() {
-  try {
-    const response = await fetch('/api/auth/users', {
-      headers: {
-        'Authorization': `Bearer ${getAuthToken()}`
-      }
-    });
-
-    if (response.ok) {
-      allUsers = await response.json();
-    } else {
-      console.error('Error loading users');
-      allUsers = [];
-    }
-
-    const select = document.getElementById('taskAssignedTo');
-    select.innerHTML = '<option value="">Not Assigned</option>';
-
-    allUsers.forEach(user => {
-      const option = document.createElement('option');
-      option.value = user._id;
-      option.textContent = user.full_name || user.email;
-      select.appendChild(option);
-    });
-  } catch (error) {
-    console.error('Error loading users:', error);
-    allUsers = [];
-  }
 }
 
 async function loadTasks() {
   try {
-    const response = await fetch('/api/todo', {
-      headers: {
-        'Authorization': `Bearer ${getAuthToken()}`
-      }
-    });
+    const response = await fetch('/api/todo');
 
     if (!response.ok) {
       console.error('Error loading tasks');
@@ -125,24 +66,12 @@ function createTaskCard(task) {
     : "";
 
   let assignedToHTML = "";
-  if (task.assigned_to_user) {
-    const assignedName = getUserName(task.assigned_to_user);
-    assignedToHTML = `<div style="font-size: 12px; color: #94a3b8; margin-top: 8px;">Assigned to: ${assignedName}</div>`;
-  }
-
-  let assignedByHTML = "";
-  if (task.assigned_by && task.assigned_at) {
-    const assignedByName = getUserName(task.assigned_by);
-    const assignedTime = new Date(task.assigned_at).toLocaleString();
-    assignedByHTML = `<div style="font-size: 11px; color: #64748b; margin-top: 4px;">Assigned by ${assignedByName} on ${assignedTime}</div>`;
+  if (task.assigned_to) {
+    assignedToHTML = `<div style="font-size: 12px; color: #94a3b8; margin-top: 8px;">Assigned to: ${task.assigned_to}</div>`;
   }
 
   const dueDateHTML = task.due_date
     ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Due: ${new Date(task.due_date).toLocaleDateString()}</div>`
-    : "";
-
-  const createdByHTML = task.created_by && task.created_by._id !== currentUserId
-    ? `<div style="font-size: 11px; color: #64748b; margin-top: 4px;">Created by ${getUserName(task.created_by)}</div>`
     : "";
 
   card.innerHTML = `
@@ -155,29 +84,13 @@ function createTaskCard(task) {
       </div>
     </div>
     ${assignedToHTML}
-    ${assignedByHTML}
     ${dueDateHTML}
-    ${createdByHTML}
   `;
 
   return card;
 }
 
-function getUserName(userOrId) {
-  if (typeof userOrId === 'object' && userOrId !== null) {
-    return userOrId.full_name || userOrId.email || 'Unknown User';
-  }
-
-  const user = allUsers.find(u => u._id === userOrId);
-  return user ? (user.full_name || user.email) : "Unknown User";
-}
-
 function openAddModal() {
-  if (!hasKanbanAccess('write')) {
-    alert('You do not have permission to create tasks');
-    return;
-  }
-
   currentEditingTask = null;
   document.getElementById("modalTitle").innerText = "Add New Task";
   document.getElementById("taskTitle").value = "";
@@ -192,18 +105,13 @@ function openAddModal() {
 }
 
 function openEditModal(task) {
-  if (!hasKanbanAccess('write') && task.created_by._id !== currentUserId && (!task.assigned_by || task.assigned_by._id !== currentUserId)) {
-    alert('You do not have permission to edit this task');
-    return;
-  }
-
   currentEditingTask = task;
   document.getElementById("modalTitle").innerText = "Edit Task";
   document.getElementById("taskTitle").value = task.title;
   document.getElementById("taskDescription").value = task.description || "";
   document.getElementById("taskStatus").value = task.status;
   document.getElementById("taskPriority").value = task.priority;
-  document.getElementById("taskAssignedTo").value = task.assigned_to_user ? (task.assigned_to_user._id || task.assigned_to_user) : "";
+  document.getElementById("taskAssignedTo").value = task.assigned_to || "";
   document.getElementById("taskDueDate").value = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : "";
   document.getElementById("taskTags").value = task.tags ? task.tags.join(", ") : "";
   document.getElementById("deleteTaskBtn").style.display = "inline-block";
@@ -216,16 +124,11 @@ function closeModal() {
 }
 
 async function saveTask() {
-  if (!hasKanbanAccess('write')) {
-    alert('You do not have permission to save tasks');
-    return;
-  }
-
   const title = document.getElementById("taskTitle").value.trim();
   const description = document.getElementById("taskDescription").value.trim();
   const status = document.getElementById("taskStatus").value;
   const priority = document.getElementById("taskPriority").value;
-  const assignedToUser = document.getElementById("taskAssignedTo").value || null;
+  const assignedTo = document.getElementById("taskAssignedTo").value.trim();
   const dueDate = document.getElementById("taskDueDate").value || null;
   const tagsInput = document.getElementById("taskTags").value.trim();
   const tags = tagsInput ? tagsInput.split(",").map(tag => tag.trim()).filter(tag => tag) : [];
@@ -240,7 +143,7 @@ async function saveTask() {
     description,
     status,
     priority,
-    assigned_to_user: assignedToUser,
+    assigned_to: assignedTo,
     due_date: dueDate,
     tags
   };
@@ -252,7 +155,6 @@ async function saveTask() {
       response = await fetch(`/api/todo/${currentEditingTask._id}`, {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(taskData)
@@ -261,7 +163,6 @@ async function saveTask() {
       response = await fetch('/api/todo', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(taskData)
@@ -285,21 +186,13 @@ async function saveTask() {
 async function deleteTask() {
   if (!currentEditingTask) return;
 
-  if (!hasKanbanAccess('write') && currentEditingTask.created_by._id !== currentUserId) {
-    alert('You do not have permission to delete this task');
-    return;
-  }
-
   if (!confirm("Are you sure you want to delete this task?")) {
     return;
   }
 
   try {
     const response = await fetch(`/api/todo/${currentEditingTask._id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${getAuthToken()}`
-      }
+      method: 'DELETE'
     });
 
     if (!response.ok) {

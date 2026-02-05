@@ -14,22 +14,19 @@ app.use(express.static(path.join(__dirname, "../frontend"), {
   index: false
 }));
 
-const { router: authRouter } = require("./routes/auth.routes");
-
-app.use("/api/auth", authRouter);
 app.use("/api/billing", require("./routes/billing.routes"));
 app.use("/api/instance", require("./routes/instance.routes"));
 app.use("/api/checklist", require("./routes/checklist.routes"));
 app.use("/api/todo", require("./routes/todo.routes"));
 
-//  Root path serves login page
+//  Root path serves index page
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/login.html"));
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
-//  Fallback to login.html for unknown routes
+//  Fallback to index.html for unknown routes
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/login.html"));
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
 app.listen(4000, () =>
