@@ -31,21 +31,62 @@ cd backend
 npm install
 ```
 
-3. Start MongoDB
+3. Configure environment variables
+```bash
+# Copy the example environment file
+cp backend/.env.example backend/.env
+
+# Edit backend/.env to customize your configuration
+# The file comes with sensible defaults for development
+```
+
+**Default Admin Credentials:**
+- Username: `admin`
+- Email: `admin@billingtracker.local`
+- Password: `admin123`
+
+The default admin account is created automatically on first startup if no users exist in the database.
+
+4. Start MongoDB
 ```bash
 # Make sure MongoDB is running on localhost:27017
 ```
 
-4. Start the application
+5. Start the application
 ```bash
 cd backend
 npm start
 ```
 
-5. Access the application
+6. Access the application and login
 ```
 http://localhost:4000
 ```
+Login with the default credentials above.
+
+## Configuration
+
+### Environment Variables
+
+The application uses environment variables configured in `backend/.env`:
+
+```env
+# MongoDB Configuration
+MONGO_URI=mongodb://root:secret123@localhost:27017/billing-tracker?authSource=admin
+
+# JWT Secret (change this in production!)
+JWT_SECRET=your-secret-key-change-in-production
+
+# Default Admin Credentials
+DEFAULT_ADMIN_USERNAME=admin
+DEFAULT_ADMIN_EMAIL=admin@billingtracker.local
+DEFAULT_ADMIN_PASSWORD=admin123
+
+# Server Configuration
+PORT=4000
+```
+
+**Security Note:** Change the default credentials and JWT secret in production environments!
 
 ## Architecture
 
@@ -58,11 +99,17 @@ http://localhost:4000
 - Express.js server
 - MongoDB for all data storage
 - RESTful API endpoints
+- JWT-based authentication
 
 ### Database
-- **MongoDB**: Billing records, daily checklists, instance calculations, tasks
+- **MongoDB**: Billing records, daily checklists, instance calculations, tasks, user accounts
 
 ## API Endpoints
+
+### Authentication
+- `POST /api/auth/signup` - Create new user account (only available on first deployment)
+- `POST /api/auth/login` - Login with username/email and password
+- `GET /api/auth/check-signup-available` - Check if signup is available
 
 ### Billing
 - `POST /api/billing/add` - Add billing data
@@ -135,15 +182,26 @@ billing-tracker/
 
 ## Troubleshooting
 
+### Default credentials not working
+- Check the `backend/.env` file for the current credentials
+- Ensure MongoDB is properly connected
+- The default user is only created if no users exist in the database
+
 ### MongoDB connection failed
 - Ensure MongoDB is running
-- Check connection string in `backend/config/db.js`
+- Check connection string in `backend/.env` (MONGO_URI)
 - Verify credentials if using authentication
 
 ### Application won't start
-- Check if port 4000 is already in use
-- Verify all npm dependencies are installed
+- Check if port 4000 is already in use (or change PORT in .env)
+- Verify all npm dependencies are installed with `npm install`
 - Check for errors in the console
+
+### How to change admin password
+The application currently doesn't have a password change interface. To change the admin password:
+1. Delete the existing user from MongoDB
+2. Update the credentials in `backend/.env`
+3. Restart the application to create a new user with updated credentials
 
 ## Contributing
 

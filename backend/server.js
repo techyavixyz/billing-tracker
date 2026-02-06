@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -29,6 +30,8 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/login.html"));
 });
 
-app.listen(4000, () =>
-  console.log("Billing Tracker running on http://localhost:4000")
+const PORT = process.env.PORT || 4000;
+
+app.listen(PORT, () =>
+  console.log(`✅ Billing Tracker running on http://localhost:${PORT}`)
 );
